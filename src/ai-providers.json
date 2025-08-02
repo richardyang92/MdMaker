@@ -1,0 +1,44 @@
+{
+  "deepseek": {
+    "name": "DeepSeek",
+    "baseUrl": "https://api.deepseek.com/v1",
+    "models": [
+      "deepseek-chat",
+      "deepseek-coder"
+    ],
+    "requiresKey": true,
+    "maxTokens": 1000
+  },
+  "kimi": {
+    "name": "Kimi",
+    "baseUrl": "https://api.moonshot.cn/v1",
+    "models": [
+      "kimi-thinking-preview",
+      "kimi-k2-0711-preview"
+    ],
+    "requiresKey": true,
+    "maxTokens": 1000
+  },
+  "lmstudio": {
+    "name": "LM Studio",
+    "baseUrl": "http://localhost:1234/v1",
+    "models": [
+      "qwen3-235b-a22b",
+      "qwen3-30b-a3b",
+      "qwen/qwen3-30b-a3b-2507",
+      "qwen/qwen3-coder-30b"
+    ],
+    "requiresKey": false,
+    "supportsThinkingMode": true,
+    "maxTokens": 1000
+  },
+  "custom": {
+    "name": "自定义",
+    "baseUrl": "",
+    "models": [
+      ""
+    ],
+    "requiresKey": true,
+    "maxTokens": 1000
+  }
+}
