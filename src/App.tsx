@@ -253,6 +253,7 @@ $$
   const textareaRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<any>(null);
+  const scrollSyncCleanupRef = useRef<(() => void) | null>(null);
 
   // 获取当前环境变量
   const getCurrentEnvValues = () => {
@@ -337,62 +338,144 @@ $$
 
   // 实现编辑区和预览区的滚动联动
   useEffect(() => {
-    const previewElement = previewRef.current;
-    const editorElement = editorRef.current;
-
-    if (!previewElement || !editorElement) return;
-
-    // 用于防止滚动事件循环调用的标志
-    let isSyncing = false;
-
-    const handlePreviewScroll = () => {
-      if (isSyncing) return;
-      isSyncing = true;
-
-      // 计算预览区的滚动比例
-      const previewScrollRatio = previewElement.scrollTop / (previewElement.scrollHeight - previewElement.clientHeight);
-      
-      // 根据比例同步编辑区的滚动位置
-      // Monaco Editor的滚动方法
-      const editorScrollHeight = editorElement.getContentHeight() - editorElement.getLayoutInfo().height;
-      editorElement.setScrollTop(previewScrollRatio * editorScrollHeight);
-
-      // 在下一个事件循环中重置标志
-      setTimeout(() => {
-        isSyncing = false;
-      }, 0);
-    };
-
-    const handleEditorScroll = () => {
-      if (isSyncing) return;
-      isSyncing = true;
-
-      // 计算编辑区的滚动比例
-      const editorScrollTop = editorElement.getScrollTop();
-      const editorScrollHeight = editorElement.getContentHeight() - editorElement.getLayoutInfo().height;
-      const editorScrollRatio = editorScrollHeight > 0 ? editorScrollTop / editorScrollHeight : 0;
-      
-      // 根据比例同步预览区的滚动位置
-      previewElement.scrollTop = editorScrollRatio * (previewElement.scrollHeight - previewElement.clientHeight);
-
-      // 在下一个事件循环中重置标志
-      setTimeout(() => {
-        isSyncing = false;
-      }, 0);
-    };
-
-    // 添加滚动事件监听器
-    previewElement.addEventListener('scroll', handlePreviewScroll);
+    console.log('🔍 [滚动同步] useEffect 开始执行，依赖项变化');
     
-    // Monaco Editor的滚动事件监听
-    const editorDisposable = editorElement.onDidScrollChange(handleEditorScroll);
+    // 创建一个函数来设置滚动同步
+    const setupScrollSync = () => {
+      const previewElement = previewRef.current;
+      const editorElement = editorRef.current;
 
-    // 清理事件监听器
-    return () => {
-      previewElement.removeEventListener('scroll', handlePreviewScroll);
-      editorDisposable.dispose();
+      console.log('🔍 [滚动同步] previewElement:', previewElement ? '存在' : '不存在');
+      console.log('🔍 [滚动同步] editorElement:', editorElement ? '存在' : '不存在');
+      console.log('🔍 [滚动同步] editorElement 类型:', typeof editorElement);
+      console.log('🔍 [滚动同步] editorElement 方法:', editorElement ? Object.keys(editorElement).filter(key => typeof editorElement[key] === 'function') : '无');
+
+      // 添加额外的检查，确保editorElement是Monaco Editor实例
+      if (!editorElement || typeof editorElement !== 'object' || !editorElement.onDidScrollChange) {
+        console.log('🔍 [滚动同步] editorElement 不是有效的Monaco Editor实例');
+        return false;
+      }
+
+      if (!previewElement) {
+        console.log('🔍 [滚动同步] previewElement 不存在，退出');
+        return false;
+      }
+
+      // 检查Monaco Editor是否完全初始化
+      if (!editorElement.getLayoutInfo || !editorElement.getContentHeight || !editorElement.getScrollTop || !editorElement.setScrollTop) {
+        console.log('🔍 [滚动同步] Monaco Editor 未完全初始化，缺少必要方法');
+        console.log('🔍 [滚动同步] 可用方法:', Object.keys(editorElement).filter(key => typeof editorElement[key] === 'function'));
+        return false;
+      }
+
+      console.log('🔍 [滚动同步] 开始绑定滚动事件');
+
+      // 用于防止滚动事件循环调用的标志
+      let isSyncing = false;
+
+      const handlePreviewScroll = () => {
+        console.log('🔍 [滚动同步] 预览区滚动事件触发');
+        if (isSyncing) return;
+        isSyncing = true;
+
+        // 计算预览区的滚动比例
+        const previewScrollRatio = previewElement.scrollTop / (previewElement.scrollHeight - previewElement.clientHeight);
+        
+        // 根据比例同步编辑区的滚动位置
+        // Monaco Editor的滚动方法
+        try {
+          const editorScrollHeight = editorElement.getContentHeight() - editorElement.getLayoutInfo().height;
+          editorElement.setScrollTop(previewScrollRatio * editorScrollHeight);
+        } catch (error) {
+          console.error('🔍 [滚动同步] 设置编辑区滚动位置时出错:', error);
+        }
+
+        // 在下一个事件循环中重置标志
+        setTimeout(() => {
+          isSyncing = false;
+        }, 0);
+      };
+
+      const handleEditorScroll = () => {
+        console.log('🔍 [滚动同步] 编辑区滚动事件触发');
+        if (isSyncing) return;
+        isSyncing = true;
+
+        // 计算编辑区的滚动比例
+        try {
+          const editorScrollTop = editorElement.getScrollTop();
+          const editorScrollHeight = editorElement.getContentHeight() - editorElement.getLayoutInfo().height;
+          const editorScrollRatio = editorScrollHeight > 0 ? editorScrollTop / editorScrollHeight : 0;
+          
+          // 根据比例同步预览区的滚动位置
+          previewElement.scrollTop = editorScrollRatio * (previewElement.scrollHeight - previewElement.clientHeight);
+        } catch (error) {
+          console.error('🔍 [滚动同步] 设置预览区滚动位置时出错:', error);
+        }
+
+        // 在下一个事件循环中重置标志
+        setTimeout(() => {
+          isSyncing = false;
+        }, 0);
+      };
+
+      // 添加滚动事件监听器
+      previewElement.addEventListener('scroll', handlePreviewScroll);
+      
+      // Monaco Editor的滚动事件监听
+      let editorDisposable: { dispose: () => void } | undefined;
+      try {
+        editorDisposable = editorElement.onDidScrollChange(handleEditorScroll);
+      } catch (error) {
+        console.error('🔍 [滚动同步] 绑定编辑区滚动事件时出错:', error);
+      }
+
+      // 将清理函数存储在ref中，以便在组件卸载时调用
+      const cleanup = () => {
+        console.log('🔍 [滚动同步] 清理事件监听器');
+        previewElement.removeEventListener('scroll', handlePreviewScroll);
+        if (editorDisposable && typeof editorDisposable.dispose === 'function') {
+          editorDisposable.dispose();
+        }
+      };
+      
+      // 将清理函数存储在ref中
+      scrollSyncCleanupRef.current = cleanup;
+      
+      return true; // 成功设置滚动同步
     };
-  }, [markdown]);
+
+    // 尝试立即设置滚动同步
+    let success = setupScrollSync();
+    
+    // 如果立即设置失败，设置定时器重试
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!success) {
+      retryTimer = setTimeout(() => {
+        console.log('🔍 [滚动同步] 重试设置滚动同步');
+        success = setupScrollSync();
+        if (!success) {
+          console.log('🔍 [滚动同步] 重试设置滚动同步失败');
+        } else {
+          console.log('🔍 [滚动同步] 重试设置滚动同步成功');
+        }
+      }, 300);
+    }
+
+    // 清理函数
+    return () => {
+      // 清除重试定时器
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+      
+      // 调用滚动同步清理函数
+      if (scrollSyncCleanupRef.current) {
+        scrollSyncCleanupRef.current();
+        scrollSyncCleanupRef.current = null;
+      }
+    };
+  }, [editorRef, previewRef]); // 依赖项改为editorRef和previewRef，这样当组件重新挂载时会重新绑定事件
 
   // 自动滚动到最新消息
   useEffect(() => {
@@ -1272,7 +1355,14 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                   <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                     <h2 className="text-sm font-medium text-gray-700">预览区</h2>
                   </div>
-                  <div ref={previewRef} className="flex-1 overflow-y-auto p-4">
+                  <div
+                    ref={previewRef}
+                    className="flex-1 overflow-y-auto p-4"
+                    style={{
+                      scrollbarWidth: 'none',
+                      msOverflowStyle: 'none'
+                    }}
+                  >
                     <div className="prose prose-sm max-w-none">
                       <div dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }} />
                     </div>
@@ -1297,6 +1387,111 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                         }}
                         onMount={(editor) => {
                           editorRef.current = editor;
+                          console.log('🔍 [滚动同步] Monaco Editor onMount 触发');
+                          // 在编辑器挂载后重新设置滚动同步
+                          if (scrollSyncCleanupRef.current) {
+                            scrollSyncCleanupRef.current();
+                            scrollSyncCleanupRef.current = null;
+                          }
+                          // 立即尝试设置滚动同步
+                          setTimeout(() => {
+                            const previewElement = previewRef.current;
+                            if (previewElement) {
+                              // 清理之前的事件监听器
+                              const setupScrollSync = () => {
+                                const editorElement = editorRef.current;
+                                
+                                console.log('🔍 [滚动同步] onMount后设置滚动同步');
+                                console.log('🔍 [滚动同步] previewElement:', previewElement ? '存在' : '不存在');
+                                console.log('🔍 [滚动同步] editorElement:', editorElement ? '存在' : '不存在');
+                                
+                                if (!editorElement || typeof editorElement !== 'object' || !editorElement.onDidScrollChange) {
+                                  console.log('🔍 [滚动同步] editorElement 不是有效的Monaco Editor实例');
+                                  return false;
+                                }
+                                
+                                if (!editorElement.getLayoutInfo || !editorElement.getContentHeight || !editorElement.getScrollTop || !editorElement.setScrollTop) {
+                                  console.log('🔍 [滚动同步] Monaco Editor 未完全初始化，缺少必要方法');
+                                  return false;
+                                }
+                                
+                                console.log('🔍 [滚动同步] 开始绑定滚动事件');
+                                
+                                // 用于防止滚动事件循环调用的标志
+                                let isSyncing = false;
+                                
+                                const handlePreviewScroll = () => {
+                                  console.log('🔍 [滚动同步] 预览区滚动事件触发');
+                                  if (isSyncing) return;
+                                  isSyncing = true;
+                                
+                                  // 计算预览区的滚动比例
+                                  const previewScrollRatio = previewElement.scrollTop / (previewElement.scrollHeight - previewElement.clientHeight);
+                                  
+                                  // 根据比例同步编辑区的滚动位置
+                                  try {
+                                    const editorScrollHeight = editorElement.getContentHeight() - editorElement.getLayoutInfo().height;
+                                    editorElement.setScrollTop(previewScrollRatio * editorScrollHeight);
+                                  } catch (error) {
+                                    console.error('🔍 [滚动同步] 设置编辑区滚动位置时出错:', error);
+                                  }
+                                
+                                  // 在下一个事件循环中重置标志
+                                  setTimeout(() => {
+                                    isSyncing = false;
+                                  }, 0);
+                                };
+                                
+                                const handleEditorScroll = () => {
+                                  console.log('🔍 [滚动同步] 编辑区滚动事件触发');
+                                  if (isSyncing) return;
+                                  isSyncing = true;
+                                
+                                  // 计算编辑区的滚动比例
+                                  try {
+                                    const editorScrollTop = editorElement.getScrollTop();
+                                    const editorScrollHeight = editorElement.getContentHeight() - editorElement.getLayoutInfo().height;
+                                    const editorScrollRatio = editorScrollHeight > 0 ? editorScrollTop / editorScrollHeight : 0;
+                                    
+                                    // 根据比例同步预览区的滚动位置
+                                    previewElement.scrollTop = editorScrollRatio * (previewElement.scrollHeight - previewElement.clientHeight);
+                                  } catch (error) {
+                                    console.error('🔍 [滚动同步] 设置预览区滚动位置时出错:', error);
+                                  }
+                                
+                                  // 在下一个事件循环中重置标志
+                                  setTimeout(() => {
+                                    isSyncing = false;
+                                  }, 0);
+                                };
+                                
+                                // 添加滚动事件监听器
+                                previewElement.addEventListener('scroll', handlePreviewScroll);
+                                
+                                // Monaco Editor的滚动事件监听
+                                let editorDisposable: { dispose: () => void } | undefined;
+                                try {
+                                  editorDisposable = editorElement.onDidScrollChange(handleEditorScroll);
+                                } catch (error) {
+                                  console.error('🔍 [滚动同步] 绑定编辑区滚动事件时出错:', error);
+                                }
+                                
+                                // 将清理函数存储在ref中
+                                const cleanup = () => {
+                                  console.log('🔍 [滚动同步] 清理事件监听器');
+                                  previewElement.removeEventListener('scroll', handlePreviewScroll);
+                                  if (editorDisposable && typeof editorDisposable.dispose === 'function') {
+                                    editorDisposable.dispose();
+                                  }
+                                };
+                                
+                                scrollSyncCleanupRef.current = cleanup;
+                                return true;
+                              };
+                              
+                              setupScrollSync();
+                            }
+                          }, 100); // 稍微延迟以确保DOM完全更新
                         }}
                         options={{
                           minimap: { enabled: false },

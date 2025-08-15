@@ -760,4 +760,27 @@ select {
   border-radius: 0.5rem !important;
   /* 确保有足够的右内边距来容纳自定义箭头 */
   padding-right: 2rem !important;
+/* 隐藏预览区域滚动条但保留滚动功能 */
+.preview-scrollbar-hide {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+.preview-scrollbar-hide::-webkit-scrollbar {
+  display: none !important;  /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 强制隐藏预览区域的所有滚动条 */
+.bg-white.border-r.border-gray-200.overflow-hidden:first-child .overflow-y-auto::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.bg-white.border-r.border-gray-200.overflow-hidden:first-child .overflow-y-auto {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
 }
