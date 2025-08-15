@@ -264,7 +264,7 @@
   --message-assistant-bg: #dcfce7;
   --message-assistant-text: #14532d;
   --preview-bg: #f0fdf4;
-  --editor-bg: #f0fdf4;
+  --editor-bg: #C8E6C9; /* 更深的枣糕绿色 */
   --ai-panel-bg: #f0fdf4;
 }
 
@@ -783,4 +783,24 @@ select {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
+}
+
+/* Monaco Editor护眼主题样式 */
+[data-theme="eye-protect"] .monaco-editor,
+[data-theme="eye-protect"] .monaco-editor-background,
+[data-theme="eye-protect"] .monaco-editor .inputarea.ime-input {
+  background-color: var(--preview-bg) !important;
+}
+
+[data-theme="eye-protect"] .monaco-editor .margin {
+  background-color: var(--panel-header-bg) !important;
+}
+
+[data-theme="eye-protect"] .monaco-editor .view-overlays .current-line {
+  border-color: var(--button-primary-bg) !important;
+}
+
+[data-theme="eye-protect"] .monaco-editor .cursors-layer .cursor {
+  background-color: var(--button-primary-bg) !important;
+  border-color: var(--button-primary-bg) !important;
 }

@@ -7,6 +7,7 @@ import providers from './ai-providers.json';
 import MessageItem from './MessageItem';
 import TreeDemo from './TreeDemo';
 import logo from '/logo.svg';
+import { generateSystemMessage } from './promptTemplates';
 // 动态导入Monaco Editor
 const Editor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -772,137 +773,19 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
       }
       
       // 创建请求参数对象
+      // 检查是否为Qwen模型
+      const isQwenModel = /^qwen\/qwen/.test(aiConfig.model || '');
+      
       const requestParams: any = {
         messages: [
-          { role: 'system', content: aiConfig.thinkingMode ? `你是一个专业的Markdown编辑器助手，可以帮助用户编辑和优化Markdown文档，支持LaTeX公式。
-          
-根据用户的需求，你可以通过function call的方式来执行特定的操作。可用的function call包括：
-1. replace_content: 替换整个文档内容
-   参数说明：
-   - content (string, required): 要替换的完整文档内容
-   详细描述：此函数用于完全替换当前文档的内容。使用此函数时，新内容将完全覆盖原有文档内容，适用于用户要求重新生成完整文档或完全替换现有内容的场景。
-   使用示例：当用户要求"重新写一篇关于人工智能的文章"或"将整个文档替换为以下内容"时使用。
-
-2. append_content: 追加内容到文档末尾
-   参数说明：
-   - content (string, required): 要追加到文档末尾的内容
-   详细描述：此函数用于在当前文档的末尾追加新内容。原有文档内容保持不变，新内容将添加到文档的最后，适用于用户要求在现有内容基础上添加更多信息的场景。
-   使用示例：当用户要求"在文档末尾添加一段总结"或"补充一些相关内容"时使用。
-
-3. insert_content: 在光标位置插入内容
-   参数说明：
-   - content (string, required): 要在光标位置插入的内容
-   详细描述：此函数用于在用户光标所在位置插入新内容。原有文档内容保持不变，新内容将插入到光标位置，适用于用户要求在文档特定位置添加内容的场景。
-   使用示例：当用户要求"在当前位置插入一段描述"或"在这里添加详细说明"时使用。
-   特别注意：当使用此函数时，你需要考虑光标的位置。光标位置信息将作为额外的上下文提供，格式为"光标位置: [位置索引]"。位置索引从0开始计算，表示光标在文档中的字符位置。
-
-4. replace_selection: 替换选中的区域内容
-   参数说明：
-   - content (string, required): 要替换选中区域的内容
-   详细描述：此函数用于替换用户在编辑器中选中的文本内容。使用此函数时，新内容将完全覆盖用户选中的文本区域，适用于用户要求修改或重写特定段落的场景。
-   使用示例：当用户要求"修改选中的段落"或"重写这部分内容"时使用。
-   特别注意：当使用此函数时，你需要考虑用户选中的文本区域。选中区域信息将作为额外的上下文提供，格式为"选中区域起始位置: [起始索引], 选中区域结束位置: [结束索引]"。位置索引从0开始计算，表示光标在文档中的字符位置。
-
-请根据用户的具体需求选择合适的function call，并以以下格式返回：
-<function_call>
-{
-  "name": "function_name",
-  "arguments": {
-    "content": "要操作的内容"
-  }
-}
-</function_call>
-
-例如，如果用户要求替换整个文档内容，你可以这样返回：
-<function_call>
-{
-  "name": "replace_content",
-  "arguments": {
-    "content": "新的文档内容"
-  }
-}
-</function_call>
-
-如果用户要求在文档末尾添加内容，你可以这样返回：
-<function_call>
-{
-  "name": "append_content",
-  "arguments": {
-    "content": "要添加到末尾的内容"
-  }
-}
-</function_call>
-
-如果用户要求在光标位置插入内容，你可以这样返回：
-<function_call>
-{
-  "name": "insert_content",
-  "arguments": {
-    "content": "要插入的内容"
-  }
-}
-</function_call>` : `/no_think
-你是一个专业的Markdown编辑器助手，可以帮助用户编辑和优化Markdown文档，支持LaTeX公式。
-          
-根据用户的需求，你可以通过function call的方式来执行特定的操作。可用的function call包括：
-1. replace_content: 替换整个文档内容
-   参数说明：
-   - content (string, required): 要替换的完整文档内容
-   详细描述：此函数用于完全替换当前文档的内容。使用此函数时，新内容将完全覆盖原有文档内容，适用于用户要求重新生成完整文档或完全替换现有内容的场景。
-   使用示例：当用户要求"重新写一篇关于人工智能的文章"或"将整个文档替换为以下内容"时使用。
-
-2. append_content: 追加内容到文档末尾
-   参数说明：
-   - content (string, required): 要追加到文档末尾的内容
-   详细描述：此函数用于在当前文档的末尾追加新内容。原有文档内容保持不变，新内容将添加到文档的最后，适用于用户要求在现有内容基础上添加更多信息的场景。
-   使用示例：当用户要求"在文档末尾添加一段总结"或"补充一些相关内容"时使用。
-
-3. insert_content: 在光标位置插入内容
-   参数说明：
-   - content (string, required): 要在光标位置插入的内容
-   详细描述：此函数用于在用户光标所在位置插入新内容。原有文档内容保持不变，新内容将插入到光标位置，适用于用户要求在文档特定位置添加内容的场景。
-   使用示例：当用户要求"在当前位置插入一段描述"或"在这里添加详细说明"时使用。
-   特别注意：当使用此函数时，你需要考虑光标的位置。光标位置信息将作为额外的上下文提供，格式为"光标位置: [位置索引]"。位置索引从0开始计算，表示光标在文档中的字符位置。
-
-请根据用户的具体需求选择合适的function call，并以以下格式返回：
-<function_call>
-{
-  "name": "function_name",
-  "arguments": {
-    "content": "要操作的内容"
-  }
-}
-</function_call>
-
-例如，如果用户要求替换整个文档内容，你可以这样返回：
-<function_call>
-{
-  "name": "replace_content",
-  "arguments": {
-    "content": "新的文档内容"
-  }
-}
-</function_call>
-
-如果用户要求在文档末尾添加内容，你可以这样返回：
-<function_call>
-{
-  "name": "append_content",
-  "arguments": {
-    "content": "要添加到末尾的内容"
-  }
-}
-</function_call>
-
-如果用户要求在光标位置插入内容，你可以这样返回：
-<function_call>
-{
-  "name": "insert_content",
-  "arguments": {
-    "content": "要插入的内容"
-  }
-}
-</function_call>` },
+          {
+            role: 'system',
+            content: generateSystemMessage({
+              thinkingMode: aiConfig.thinkingMode,
+              isQwenModel: isQwenModel,
+              version: 'v2.0'
+            })
+          },
           { role: 'user', content: userMessage },
           { role: 'user', content: contextInfo }
         ],
@@ -990,138 +873,13 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
           id: streamMessageId
         }]);
         
-        // 根据思考模式设置决定是否添加/no_think标志
-        const systemMessage = aiConfig.thinkingMode 
-          ? `你是一个专业的Markdown编辑器助手，可以帮助用户编辑和优化Markdown文档，支持LaTeX公式。
-          
-根据用户的需求，你可以通过function call的方式来执行特定的操作。可用的function call包括：
-1. replace_content: 替换整个文档内容
-   参数说明：
-   - content (string, required): 要替换的完整文档内容
-   详细描述：此函数用于完全替换当前文档的内容。使用此函数时，新内容将完全覆盖原有文档内容，适用于用户要求重新生成完整文档或完全替换现有内容的场景。
-   使用示例：当用户要求"重新写一篇关于人工智能的文章"或"将整个文档替换为以下内容"时使用。
-
-2. append_content: 追加内容到文档末尾
-   参数说明：
-   - content (string, required): 要追加到文档末尾的内容
-   详细描述：此函数用于在当前文档的末尾追加新内容。原有文档内容保持不变，新内容将添加到文档的最后，适用于用户要求在现有内容基础上添加更多信息的场景。
-   使用示例：当用户要求"在文档末尾添加一段总结"或"补充一些相关内容"时使用。
-
-3. insert_content: 在光标位置插入内容
-   参数说明：
-   - content (string, required): 要在光标位置插入的内容
-   详细描述：此函数用于在用户光标所在位置插入新内容。原有文档内容保持不变，新内容将插入到光标位置，适用于用户要求在文档特定位置添加内容的场景。
-   使用示例：当用户要求"在当前位置插入一段描述"或"在这里添加详细说明"时使用。
-   特别注意：当使用此函数时，你需要考虑光标的位置。光标位置信息将作为额外的上下文提供，格式为"光标位置: [位置索引]"。位置索引从0开始计算，表示光标在文档中的字符位置。
-
-4. replace_selection: 替换选中的区域内容
-   参数说明：
-   - content (string, required): 要替换选中区域的内容
-   详细描述：此函数用于替换用户在编辑器中选中的文本内容。使用此函数时，新内容将完全覆盖用户选中的文本区域，适用于用户要求修改或重写特定段落的场景。
-   使用示例：当用户要求"修改选中的段落"或"重写这部分内容"时使用。
-   特别注意：当使用此函数时，你需要考虑用户选中的文本区域。选中区域信息将作为额外的上下文提供，格式为"选中区域起始位置: [起始索引], 选中区域结束位置: [结束索引]"。位置索引从0开始计算，表示光标在文档中的字符位置。
-
-请根据用户的具体需求选择合适的function call，并以以下格式返回：
-<function_call>
-{
-  "name": "function_name",
-  "arguments": {
-    "content": "要操作的内容"
-  }
-}
-</function_call>
-
-例如，如果用户要求替换整个文档内容，你可以这样返回：
-<function_call>
-{
-  "name": "replace_content",
-  "arguments": {
-    "content": "新的文档内容"
-  }
-}
-</function_call>
-
-如果用户要求在文档末尾添加内容，你可以这样返回：
-<function_call>
-{
-  "name": "append_content",
-  "arguments": {
-    "content": "要添加到末尾的内容"
-  }
-}
-</function_call>
-
-如果用户要求在光标位置插入内容，你可以这样返回：
-<function_call>
-{
-  "name": "insert_content",
-  "arguments": {
-    "content": "要插入的内容"
-  }
-}
-</function_call>`
-          : `/no_think
-你是一个专业的Markdown编辑器助手，可以帮助用户编辑和优化Markdown文档，支持LaTeX公式。
-          
-根据用户的需求，你可以通过function call的方式来执行特定的操作。可用的function call包括：
-1. replace_content: 替换整个文档内容
-   参数说明：
-   - content (string, required): 要替换的完整文档内容
-   详细描述：此函数用于完全替换当前文档的内容。使用此函数时，新内容将完全覆盖原有文档内容，适用于用户要求重新生成完整文档或完全替换现有内容的场景。
-   使用示例：当用户要求"重新写一篇关于人工智能的文章"或"将整个文档替换为以下内容"时使用。
-
-2. append_content: 追加内容到文档末尾
-   参数说明：
-   - content (string, required): 要追加到文档末尾的内容
-   详细描述：此函数用于在当前文档的末尾追加新内容。原有文档内容保持不变，新内容将添加到文档的最后，适用于用户要求在现有内容基础上添加更多信息的场景。
-   使用示例：当用户要求"在文档末尾添加一段总结"或"补充一些相关内容"时使用。
-
-3. insert_content: 在光标位置插入内容
-   参数说明：
-   - content (string, required): 要在光标位置插入的内容
-   详细描述：此函数用于在用户光标所在位置插入新内容。原有文档内容保持不变，新内容将插入到光标位置，适用于用户要求在文档特定位置添加内容的场景。
-   使用示例：当用户要求"在当前位置插入一段描述"或"在这里添加详细说明"时使用。
-   特别注意：当使用此函数时，你需要考虑光标的位置。光标位置信息将作为额外的上下文提供，格式为"光标位置: [位置索引]"。位置索引从0开始计算，表示光标在文档中的字符位置。
-
-请根据用户的具体需求选择合适的function call，并以以下格式返回：
-<function_call>
-{
-  "name": "function_name",
-  "arguments": {
-    "content": "要操作的内容"
-  }
-}
-</function_call>
-
-例如，如果用户要求替换整个文档内容，你可以这样返回：
-<function_call>
-{
-  "name": "replace_content",
-  "arguments": {
-    "content": "新的文档内容"
-  }
-}
-</function_call>
-
-如果用户要求在文档末尾添加内容，你可以这样返回：
-<function_call>
-{
-  "name": "append_content",
-  "arguments": {
-    "content": "要添加到末尾的内容"
-  }
-}
-</function_call>
-
-如果用户要求在光标位置插入内容，你可以这样返回：
-<function_call>
-{
-  "name": "insert_content",
-  "arguments": {
-    "content": "要插入的内容"
-  }
-}
-</function_call>`;
+        // 使用generateSystemMessage函数生成系统提示词
+        const isQwenModel = /^qwen\/qwen/.test(aiConfig.model || '');
+        const systemMessage = generateSystemMessage({
+          thinkingMode: aiConfig.thinkingMode,
+          isQwenModel: isQwenModel,
+          version: 'v2.0'
+        });
         
         // 获取光标位置
         const cursorPosition = getSelectionPosition().start;

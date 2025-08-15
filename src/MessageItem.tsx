@@ -23,9 +23,20 @@ interface MessageItemProps {
 const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, requestParams, executedOperations, setExecutedOperations }) => {
   const [showRaw, setShowRaw] = useState(false);
   
+  // 解析消息中的各种标记
   const hasThink = message.content.includes('think>');
-  const thinkMatch = message.content.match(/<think>([\s\S]*?)<\/think>/);
-  const mainContent = message.content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+  const thinkMatch = message.content.match(/<think(?:\s+version="(\d+\.\d+)")?>([\s\S]*?)<\/think>/);
+  const contextMatch = message.content.match(/<context>([\s\S]*?)<\/context>/g);
+  const suggestionMatch = message.content.match(/<suggestion>([\s\S]*?)<\/suggestion>/g);
+  const errorMatch = message.content.match(/<error>([\s\S]*?)<\/error>/g);
+  
+  // 移除所有标记获取主内容
+  const mainContent = message.content
+    .replace(/<think(?:\s+version="\d+\.\d+")?>[\s\S]*?<\/think>/, '')
+    .replace(/<context>[\s\S]*?<\/context>/g, '')
+    .replace(/<suggestion>[\s\S]*?<\/suggestion>/g, '')
+    .replace(/<error>[\s\S]*?<\/error>/g, '')
+    .trim();
   
   // 检查是否是流式响应消息（ID以stream-开头）
   const isStreaming = message.id.startsWith('stream-');
@@ -211,13 +222,38 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
     <div className={`text-sm ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
       <div className={`block px-3 py-2 rounded-lg ${message.role === 'user' ? 'message-user ml-auto' : 'message-assistant mr-auto'} w-full max-w-full`}>
         <>
+          {/* 显示思考过程和上下文 */}
           {hasThink && thinkMatch && (
             <details className="mb-2">
               <summary className="cursor-pointer text-xs summary-text hover:text-hover-text">
-                显示思考过程
+                显示思考过程 {thinkMatch[1] && `(v${thinkMatch[1]})`}
               </summary>
               <div className="mt-1 p-2 details-bg rounded text-xs details-text whitespace-pre-wrap">
-                {thinkMatch[1].trim()}
+                {thinkMatch[2].trim()}
+                {contextMatch && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <h4 className="font-medium">上下文:</h4>
+                    {contextMatch.map((ctx, i) => (
+                      <div key={i} className="mt-1">{ctx.replace(/<\/?context>/g, '')}</div>
+                    ))}
+                  </div>
+                )}
+                {suggestionMatch && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <h4 className="font-medium">建议:</h4>
+                    {suggestionMatch.map((sug, i) => (
+                      <div key={i} className="mt-1">{sug.replace(/<\/?suggestion>/g, '')}</div>
+                    ))}
+                  </div>
+                )}
+                {errorMatch && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <h4 className="font-medium text-red-600">错误:</h4>
+                    {errorMatch.map((err, i) => (
+                      <div key={i} className="mt-1 text-red-500">{err.replace(/<\/?error>/g, '')}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             </details>
           )}
