@@ -146,15 +146,31 @@ npm run build:all
 ## 项目结构
 
 ```
-├── src/
-│   ├── App.tsx          # 主应用组件
-│   ├── main.tsx         # 应用入口
-│   └── index.css        # 样式文件
-├── index.html           # HTML模板
-├── package.json         # 项目配置
-├── vite.config.ts       # Vite配置
-├── tailwind.config.js   # Tailwind配置
-└── tsconfig.json        # TypeScript配置
+├── src/                          # 源代码目录
+│   ├── App.tsx                  # 主应用组件
+│   ├── main.tsx                 # 应用入口
+│   ├── index.css                # 全局样式文件
+│   ├── MessageItem.tsx          # 消息项组件
+│   ├── TreeDemo.tsx             # 树形结构演示组件
+│   ├── TreeRenderer.tsx         # 树形渲染组件
+│   ├── vite-env.d.ts            # Vite环境类型定义
+│   └── ai-providers.json        # AI提供商配置
+├── public/                      # 公共资源目录
+│   └── logo.svg                 # 应用图标
+├── index.html                   # HTML模板
+├── package.json                 # 项目配置
+├── package-lock.json            # 依赖锁定文件
+├── vite.config.ts               # Vite配置
+├── tsconfig.json                # TypeScript配置
+├── tsconfig.node.json           # Node.js TypeScript配置
+├── tailwind.config.js           # Tailwind配置
+├── postcss.config.js            # PostCSS配置
+├── server.js                    # Express后端服务器
+├── .gitignore                   # Git忽略文件
+├── LICENSE                      # 许可证文件
+├── README.md                    # 项目说明文档
+├── demo.png                     # 运行效果截图
+└── demo2.png                    # 设置界面截图
 ```
 
 ## 许可证
