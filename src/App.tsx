@@ -27,6 +27,7 @@ const CustomThemeDropdown: React.FC<{
   setTheme: (theme: 'light' | 'dark' | 'eye-protect') => void;
 }> = ({ theme, setTheme }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 主题选项
@@ -57,8 +58,18 @@ const CustomThemeDropdown: React.FC<{
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        className="w-full bg-white border border-gray-300 hover:border-gray-400 px-4 py-1 rounded-md shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-center"
-        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:border-gray-400 dark:hover:border-slate-500 px-4 py-1 rounded-md shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-center dark:text-gray-300"
+        onClick={() => {
+          if (dropdownRef.current) {
+            const rect = dropdownRef.current.getBoundingClientRect();
+            setDropdownPosition({
+              top: rect.bottom + window.scrollY,
+              left: rect.left + window.scrollX,
+              width: rect.width
+            });
+          }
+          setIsOpen(!isOpen);
+        }}
       >
         <div className="flex items-center">
           <span className="mr-2">{currentThemeLabel}</span>
@@ -69,7 +80,17 @@ const CustomThemeDropdown: React.FC<{
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+        <div className="fixed rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5" 
+             style={{
+               position: 'fixed',
+               top: dropdownPosition.top,
+               left: dropdownPosition.left,
+               width: dropdownPosition.width,
+               maxHeight: '200px',
+               overflowY: 'auto',
+               pointerEvents: 'auto',
+               transform: 'translateZ(0)'
+             }}>
           <div className="py-1 rounded-md">
             {themeOptions.map((option) => (
               <button
@@ -78,7 +99,7 @@ const CustomThemeDropdown: React.FC<{
                   theme === option.value 
                     ? 'bg-blue-500 text-white font-medium' 
                     : `${
-                        theme === 'dark' ? 'bg-transparent text-gray-300 hover:bg-gray-700 hover:text-white' :
+                        theme === 'dark' ? 'bg-slate-800 text-gray-300 hover:bg-slate-700 hover:text-white' :
                         theme === 'eye-protect' ? 'bg-transparent text-green-700 hover:bg-green-100 hover:text-green-900' :
                         'text-gray-700 hover:bg-blue-100 hover:text-gray-900'  // light theme
                       }`
@@ -130,7 +151,7 @@ const CustomDropdown: React.FC<{
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        className="w-full bg-white border border-gray-300 hover:border-gray-400 px-4 py-1 rounded-md shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-center"
+        className="w-full bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:border-gray-400 dark:hover:border-slate-500 px-4 py-1 rounded-md shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-center dark:text-gray-300"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center">
@@ -142,7 +163,7 @@ const CustomDropdown: React.FC<{
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 max-h-60 overflow-y-auto">
+        <div className="absolute z-[9999] mt-1 w-full rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 max-h-[calc(100vh-120px)] overflow-y-auto">
           <div className="py-1 rounded-md">
             {options.map((option) => (
               <button
@@ -151,7 +172,7 @@ const CustomDropdown: React.FC<{
                   value === option.value 
                     ? 'bg-blue-500 text-white font-medium' 
                     : `${
-                        theme === 'dark' ? 'bg-transparent text-gray-300 hover:bg-gray-700 hover:text-white' :
+                        theme === 'dark' ? 'bg-slate-800 text-gray-300 hover:bg-slate-700 hover:text-white' :
                         theme === 'eye-protect' ? 'bg-transparent text-green-700 hover:bg-green-100 hover:text-green-900' :
                         'text-gray-700 hover:bg-blue-100 hover:text-gray-900'  // light theme
                       }`
@@ -251,7 +272,6 @@ $$
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<any>(null);
   const scrollSyncCleanupRef = useRef<(() => void) | null>(null);
@@ -335,6 +355,28 @@ $$
   useEffect(() => {
     saveToHistory(markdown);
     setHistoryIndex(0);
+    
+    // 添加欢迎消息
+    const welcomeMessage = {
+      role: 'assistant' as const,
+      content: `👋 欢迎使用AI智能Markdown编辑器！
+
+我是您的专属AI助手，可以帮助您：
+- 📝 优化和格式化Markdown内容
+- 📊 创建和编辑表格、图表
+- 🔍 检查和修正LaTeX数学公式
+- 💡 提供内容改进建议
+- ⚡ 快速生成各种Markdown元素
+
+您可以：
+1. 在左侧编辑器中编写或粘贴Markdown内容
+2. 在下方输入框向我提问或寻求帮助
+3. 使用快捷按钮快速获取常用功能
+
+有什么我可以帮助您的吗？`,
+      id: `welcome-${Date.now()}`
+    };
+    setAiMessages([welcomeMessage]);
   }, []);
 
   // 实现编辑区和预览区的滚动联动
@@ -640,7 +682,6 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
         const endPosition = selection.getEndPosition();
         
         // 获取选中区域前的文本
-        const fullText = model.getValue();
         const startOffset = model.getOffsetAt(startPosition);
         const endOffset = model.getOffsetAt(endPosition);
         
@@ -753,14 +794,8 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
       const userMessage = aiInput ? aiInput : (selectedText ? selectedText : aiInput);
       const messageId = Date.now().toString();
       
-      // 获取光标位置
-      let cursorPosition = 0;
-      if (editorRef.current) {
-        const position = editorRef.current.getPosition();
-        if (position) {
-          cursorPosition = position.column - 1; // Monaco Editor的列索引从1开始，我们需要从0开始
-        }
-      }
+      // 获取光标位置（使用字符偏移量）
+      const cursorPosition = getSelectionPosition().start;
       
       // 使用用户在界面中设置的maxTokens值
       // 当maxTokens为-1时，表示无限制输出长度，不设置max_tokens参数
@@ -1041,29 +1076,26 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
         </div>
       ) : (
         <>
-<header className="bg-white shadow-md border-b-2 border-gray-300">
-            <div className="px-4 sm:px-4 lg:px-4">
+<header className="bg-white dark:bg-slate-800 shadow-lg border-b border-gray-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+            <div className="px-6">
 <div className="flex justify-between items-center h-16">
 <h1 className="text-xl font-bold flex items-center">
-  <img src={logo} alt="Logo" className="h-8 w-8 mr-2" />
-  <span className={theme === 'dark' ? 'text-white' : 'text-black'}>智写助手</span>
+  <img src={logo} alt="Logo" className="h-8 w-8 mr-3 rounded-lg shadow-sm" />
+  <span className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold tracking-tight`}>智写助手</span>
 </h1>
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <CustomThemeDropdown theme={theme} setTheme={setTheme} />
-                  </div>
-                  <div className="text-xs text-gray-500 mr-4">
+                <div className="flex items-center space-x-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
                     当前配置: {getCurrentConfigSource()}
                   </div>
                   <button
                     onClick={() => setShowTreeDemo(true)}
-                    className="px-4 py-2 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-green-600 rounded-lg hover:from-green-600 hover:to-green-700 shadow-sm hover:shadow-md transition-all duration-200"
                   >
-                    AI Provider信息
+                    AI Provider
                   </button>
                   <button
                     onClick={handleNew}
-                    className="px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 hover:border-gray-300 dark:hover:border-slate-500 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     新建
                   </button>
@@ -1076,30 +1108,37 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                   />
                   <label
                     htmlFor="file-upload"
-                    className="px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
+                    className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 hover:border-gray-300 dark:hover:border-slate-500 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
                   >
                     打开
                   </label>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     保存
                   </button>
-                  <button
-                    onClick={handleUndo}
-                    disabled={historyIndex <= 0}
-                    className={`px-4 py-2 text-xs font-medium rounded-md ${historyIndex <= 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-600 text-white hover:bg-gray-700'}`}
-                  >
-                    撤回
-                  </button>
-                  <button
-                    onClick={handleRedo}
-                    disabled={historyIndex >= history.length - 1}
-                    className={`px-4 py-2 text-xs font-medium rounded-md ${historyIndex >= history.length - 1 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-600 text-white hover:bg-gray-700'}`}
-                  >
-                    重做
-                  </button>
+                  <div className="flex items-center space-x-1 border-l border-gray-200 dark:border-slate-600 pl-2">
+                    <button
+                      onClick={handleUndo}
+                      disabled={historyIndex <= 0}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${historyIndex <= 0 ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm hover:shadow-md'}`}
+                    >
+                      撤回
+                    </button>
+                    <button
+                      onClick={handleRedo}
+                      disabled={historyIndex >= history.length - 1}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${historyIndex >= history.length - 1 ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 hover:text-gray-900 dark:hover:text-gray-100 shadow-sm hover:shadow-md'}`}
+                    >
+                      重做
+                    </button>
+                  </div>
+                  <div className="flex items-center space-x-1 border-l border-gray-200 pl-2">
+                    <div className="relative">
+                      <CustomThemeDropdown theme={theme} setTheme={setTheme} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1108,34 +1147,43 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
           <main className="h-[calc(100vh-4rem)]">
             <div className="grid grid-cols-3 h-full gap-0">
               {/* 左侧预览区 */}
-              <div className="bg-white border-r border-gray-200 overflow-hidden">
-                <div className="h-full flex flex-col">
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <h2 className="text-sm font-medium text-gray-700">预览区</h2>
+              <div className="bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-300 hover:shadow-lg">
+                <div className="h-full flex flex-col bg-gradient-to-b from-blue-50/20 via-white to-white dark:from-blue-900/20 dark:via-slate-800 dark:to-slate-800">
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30">
+                    <h2 className="text-base font-semibold text-[var(--text-secondary)] flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      实时预览
+                    </h2>
                   </div>
                   <div
                     ref={previewRef}
-                    className="flex-1 overflow-y-auto p-4"
-                    style={{
-                      scrollbarWidth: 'none',
-                      msOverflowStyle: 'none'
-                    }}
+                    className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-white via-gray-50/20 to-blue-50/10 dark:from-slate-800 dark:via-slate-700/20 dark:to-blue-900/10 preview-scrollbar-hide"
                   >
                     <div className="prose prose-sm max-w-none">
-                      <div dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }} />
+                      <div className="bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100/50 dark:border-slate-600/50 p-6 min-h-full backdrop-blur-sm">
+                        <div dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }} />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* 中间编辑区 */}
-              <div className="bg-white border-r border-gray-200 overflow-hidden">
-                <div className="h-full flex flex-col">
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <h2 className="text-sm font-medium text-gray-700">编辑区</h2>
+              <div className="bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-300 hover:shadow-lg">
+                <div className="h-full flex flex-col bg-gradient-to-b from-green-50/20 via-white to-white dark:from-green-900/20 dark:via-slate-800 dark:to-slate-800">
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30">
+                    <h2 className="text-base font-semibold text-[var(--text-secondary)] flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Markdown 编辑器
+                    </h2>
                   </div>
-                  <div className="flex-1 overflow-hidden">
-                    <React.Suspense fallback={<div className="flex items-center justify-center h-full">Loading编辑器...</div>}>
+                  <div className="flex-1 overflow-hidden bg-gradient-to-br from-white via-gray-50/10 to-green-50/10 dark:from-slate-800 dark:via-slate-700/10 dark:to-green-900/10">
+                    <React.Suspense fallback={<div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300 bg-gradient-to-br from-white to-gray-50/20 dark:from-slate-800 dark:to-slate-700/20">加载编辑器中...</div>}>
                       <Editor
                         height="100%"
                         defaultLanguage="markdown"
@@ -1272,104 +1320,154 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
               </div>
 
               {/* 右侧AI交互区 */}
-              <div className="bg-white overflow-hidden">
-                <div className="h-full flex flex-col">
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <h2 className="text-sm font-medium text-gray-700">AI助手</h2>
+              <div className="bg-white dark:bg-slate-800 overflow-hidden transition-all duration-300 hover:shadow-lg">
+                <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/20 via-white to-white dark:from-purple-900/20 dark:via-slate-800 dark:to-slate-800">
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30">
+                    <h2 className="text-base font-semibold text-[var(--text-secondary)] flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      AI 智能助手
+                    </h2>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={messagesContainerRef}>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 preview-scrollbar-hide" ref={messagesContainerRef}>
                     {aiMessages.map((message) => (
-                      <MessageItem 
-                        key={message.id} 
-                        message={message} 
-                        onApplyResponse={applyAiResponse} 
-                        requestParams={message.role === 'user' ? userMessageParams[message.id] : undefined}
-                        executedOperations={executedOperations}
-                        setExecutedOperations={setExecutedOperations}
-                        resetExecutedOperation={(messageId) => {
-                          // 重置指定消息的执行状态
-                          setExecutedOperations(prev => {
-                            const newExecutedOperations = { ...prev };
-                            delete newExecutedOperations[messageId];
-                            return newExecutedOperations;
-                          });
-                        }}
-                      />
+                      <div key={message.id} className="group transition-all duration-200">
+                        <MessageItem 
+                          message={message} 
+                          onApplyResponse={applyAiResponse} 
+                          requestParams={message.role === 'user' ? userMessageParams[message.id] : undefined}
+                          executedOperations={executedOperations}
+                          setExecutedOperations={setExecutedOperations}
+                          resetExecutedOperation={(messageId) => {
+                            // 重置指定消息的执行状态
+                            setExecutedOperations(prev => {
+                              const newExecutedOperations = { ...prev };
+                              delete newExecutedOperations[messageId];
+                              return newExecutedOperations;
+                            });
+                          }}
+                        />
+                      </div>
                     ))}
                     <div ref={messagesEndRef} className="h-4" />
                   </div>
-                  <div className="border-t border-gray-200 p-4">
-                    <div className="flex justify-between items-center mb-3">
+                  <div className="border-t border-gray-100 p-5 bg-gradient-to-t from-gray-50/50 to-white">
+                    <div className="flex justify-between items-start mb-4">
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => {
                             setAiInput('请帮我优化这段Markdown的格式');
                             handleAiSend();
                           }}
-                          className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          className="px-3 py-2 text-xs bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 rounded-full border border-blue-200/50 hover:from-blue-100 hover:to-blue-200 transition-all duration-200 shadow-sm hover:shadow-md"
                         >
-                          优化格式
+                          ✨ 优化格式
                         </button>
                         <button
                           onClick={() => {
                             setAiInput('请检查我的LaTeX公式是否正确');
                             handleAiSend();
                           }}
-                          className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          className="px-3 py-2 text-xs bg-gradient-to-r from-green-50 to-green-100 text-green-700 rounded-full border border-green-200/50 hover:from-green-100 hover:to-green-200 transition-all duration-200 shadow-sm hover:shadow-md"
                         >
-                          检查公式
+                          🔍 检查公式
                         </button>
                         <button
                           onClick={() => {
                             setAiInput('请帮我生成一个表格来展示这些数据');
                             handleAiSend();
                           }}
-                          className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          className="px-3 py-2 text-xs bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 rounded-full border border-purple-200/50 hover:from-purple-100 hover:to-purple-200 transition-all duration-200 shadow-sm hover:shadow-md"
                         >
-                          生成表格
+                          📊 生成表格
                         </button>
                         <button
                           onClick={() => {
                             setAiInput('请帮我改进这段内容的表达');
                             handleAiSend();
                           }}
-                          className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          className="px-3 py-2 text-xs bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 text-orange-700 dark:text-orange-300 rounded-full border border-orange-200/50 dark:border-orange-700/50 hover:from-orange-100 hover:to-orange-200 dark:hover:from-orange-900/50 dark:hover:to-orange-800/50 transition-all duration-200 shadow-sm hover:shadow-md"
                         >
-                          改进表达
+                          📝 改进表达
                         </button>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 items-start">
                         <button
                           onClick={() => {
-                            setAiMessages([]);
+                            // 重置聊天并添加欢迎消息
+                            const welcomeMessage = {
+                              role: 'assistant' as const,
+                              content: `👋 欢迎使用AI智能Markdown编辑器！
+
+我是您的专属AI助手，可以帮助您：
+- 📝 优化和格式化Markdown内容
+- 📊 创建和编辑表格、图表
+- 🔍 检查和修正LaTeX数学公式
+- 💡 提供内容改进建议
+- ⚡ 快速生成各种Markdown元素
+
+您可以：
+1. 在左侧编辑器中编写或粘贴Markdown内容
+2. 在下方输入框向我提问或寻求帮助
+3. 使用快捷按钮快速获取常用功能
+
+有什么我可以帮助您的吗？`,
+                              id: `welcome-${Date.now()}`
+                            };
+                            setAiMessages([welcomeMessage]);
                             setUserMessageParams({});
                           }}
-                          className="px-3 py-2 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                          className="px-3 py-2 text-xs bg-[var(--button-danger-bg)] hover:bg-[var(--button-danger-hover-bg)] text-[var(--button-danger-text)] rounded-full border border-[var(--border-color)] hover:shadow-md transition-all duration-200 shadow-sm"
                         >
-                          重置聊天
+                          🗑️ 重置聊天
                         </button>
                         <button
                           onClick={() => setShowAiConfig(!showAiConfig)}
-                          className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          className="px-3 py-2 text-xs bg-[var(--button-secondary-bg)] hover:bg-[var(--button-secondary-hover-bg)] text-[var(--button-secondary-text)] rounded-full border border-[var(--border-color)] hover:shadow-md transition-all duration-200 shadow-sm"
                         >
-                          {showAiConfig ? '隐藏' : '设置'}
+                          {showAiConfig ? '⚙️ 隐藏设置' : '⚙️ 显示设置'}
                         </button>
                       </div>
                     </div>
 
                     {showAiConfig && (
-                      <div className="mb-3 p-3 bg-gray-50 rounded-md space-y-2">
+                      <div className="mb-4 p-5 bg-gradient-to-br from-white to-gray-50/50 dark:from-slate-800 dark:to-slate-700/50 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-600 space-y-4 backdrop-blur-sm max-h-[60vh] overflow-y-auto">
                         {/* 显示当前实际配置值 */}
-                        <div className="bg-gray-100 rounded p-2 mb-2">
-                          <p className="text-xs text-gray-700 font-medium">当前实际配置：</p>
-                          <p className="text-xs text-gray-600">Base URL: {getCurrentEnvValues().baseUrl || '使用默认值'}</p>
-                          <p className="text-xs text-gray-600">API Key: {getCurrentEnvValues().apiKey ? '已设置' : '未设置'}</p>
-                          <p className="text-xs text-gray-600">Model: {getCurrentEnvValues().model || '使用默认值'}</p>
-                          <p className="text-xs text-gray-600">Thinking Mode: {aiConfig.thinkingMode ? '已启用' : '未启用'}</p>
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
+                          <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center">
+                            <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            当前配置状态
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center">
+                              <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
+                              <span className="text-[var(--text-secondary)]" >Base URL: <span className="font-medium text-[var(--text-secondary)]">{getCurrentEnvValues().baseUrl || '默认'}</span></span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className={`w-2 h-2 rounded-full mr-2 ${getCurrentEnvValues().apiKey ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                              <span className="text-[var(--text-secondary)]" >API Key: <span className="font-medium text-[var(--text-secondary)]">{getCurrentEnvValues().apiKey ? '已设置' : '未设置'}</span></span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-2 h-2 rounded-full bg-purple-400 mr-2"></div>
+                              <span className="text-[var(--text-secondary)]" >Model: <span className="font-medium text-[var(--text-secondary)]">{getCurrentEnvValues().model || '默认'}</span></span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className={`w-2 h-2 rounded-full mr-2 ${aiConfig.thinkingMode ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+                              <span className="text-[var(--text-secondary)]" >思考模式: <span className="font-medium text-[var(--text-secondary)]">{aiConfig.thinkingMode ? '已启用' : '未启用'}</span></span>
+                            </div>
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">提供商</label>
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            提供商
+                          </label>
                           <CustomDropdown
                             options={Object.entries(providers).map(([key, provider]) => ({
                               value: key,
@@ -1379,10 +1477,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                             onChange={(value) => {
                               const newProvider = value as keyof typeof providers;
                               const provider = providers[newProvider];
-                              // 获取新提供商的maxTokens配置，默认为1000
-                              // 保持当前的maxTokens设置，如果用户已经设置为-1则保持为-1
-                              const maxTokens = aiConfig.maxTokens; // 保持当前设置
-                              // 如果新提供商不需要API Key，则清空API Key
+                              const maxTokens = aiConfig.maxTokens;
                               const apiKey = provider.requiresKey ? aiConfig.apiKey : '';
                               setAiConfig({
                                 ...aiConfig,
@@ -1393,11 +1488,17 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                                 maxTokens: maxTokens
                               });
                             }}
-                            theme={theme}  // 传递主题属性
+                            theme={theme}
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">模型</label>
+                        
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                            模型
+                          </label>
                           <CustomDropdown
                             options={providers[aiConfig.provider as keyof typeof providers].models.map(model => ({
                               value: model,
@@ -1405,92 +1506,132 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                             }))}
                             value={aiConfig.model}
                             onChange={(value) => setAiConfig({...aiConfig, model: value})}
-                            theme={theme}  // 传递主题属性
+                            theme={theme}
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">API Base URL</label>
+                        
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            API Base URL
+                          </label>
                           <input
                             type="text"
                             value={aiConfig.baseUrl}
                             onChange={(e) => setAiConfig({...aiConfig, baseUrl: e.target.value})}
-                            className="w-full px-3 py-2 text-xs border border-gray-300 rounded custom-select"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-slate-600 rounded-lg custom-select bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-sm focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-200 dark:text-gray-100"
                             placeholder={providers[aiConfig.provider as keyof typeof providers].baseUrl}
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">API Key</label>
+                        
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            API Key
+                          </label>
                           <input
                             type="password"
                             value={aiConfig.apiKey}
                             onChange={(e) => setAiConfig({...aiConfig, apiKey: e.target.value})}
-                            className="w-full px-3 py-2 text-xs border border-gray-300 rounded custom-select"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-slate-600 rounded-lg custom-select bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-sm focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-200 dark:text-gray-100"
                             placeholder={providers[aiConfig.provider as keyof typeof providers].requiresKey ? '输入API密钥' : '无需API密钥'}
                             disabled={!providers[aiConfig.provider as keyof typeof providers].requiresKey}
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Max Tokens</label>
+                        
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 16h4m10 0h4" />
+                            </svg>
+                            Max Tokens
+                          </label>
                           <input
                             type="number"
                             value={aiConfig.maxTokens === -1 ? '-1' : aiConfig.maxTokens}
                             onChange={(e) => {
                               const value = e.target.value;
                               if (value === '') {
-                                // If empty, set to default (1000)
                                 setAiConfig({...aiConfig, maxTokens: 1000});
                                 return;
                               }
                               const numValue = parseInt(value);
                               setAiConfig({...aiConfig, maxTokens: isNaN(numValue) ? 1000 : numValue});
                             }}
-                            className="w-full px-3 py-2 text-xs border border-gray-300 rounded custom-select"
+                            className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-slate-600 rounded-lg custom-select bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-sm focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-200 dark:text-gray-100"
                             placeholder="最大输出token数量 (-1为无限制)"
                           />
-                          <div className="mt-1 text-xs text-gray-500">
-                            输入-1表示无输出长度限制
+                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/20 rounded-md px-2 py-1 border border-yellow-200 dark:border-yellow-800">
+                            💡 输入-1表示无输出长度限制
                           </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">思考模式</label>
-                          <div className="flex items-center">
+                        
+                        <div className="space-y-2">
+                          <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            思考模式
+                          </label>
+                          <div className="flex items-center bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-lg p-3 border border-indigo-100 dark:border-indigo-800">
                             <input
                               type="checkbox"
                               checked={aiConfig.thinkingMode}
                               onChange={(e) => setAiConfig({...aiConfig, thinkingMode: e.target.checked})}
-                              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500/50"
                               disabled={!(providers[aiConfig.provider as keyof typeof providers] as Provider).supportsThinkingMode}
                             />
-                            <span className="ml-2 text-xs text-gray-700">
-                              启用思考模式 {(providers[aiConfig.provider as keyof typeof providers] as Provider).supportsThinkingMode ? '(适用于Qwen3模型)' : '(当前提供商不支持)'}
+                            <span className="ml-3 text-xs text-gray-700 dark:text-gray-300">
+                              <span className="font-medium">启用思考模式</span>
+                              <br/>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                {(providers[aiConfig.provider as keyof typeof providers] as Provider).supportsThinkingMode ? '✅ 适用于Qwen3模型' : '❌ 当前提供商不支持'}
+                              </span>
                             </span>
                           </div>
                         </div>
-                        <div className="pt-2">
+                        
+                        <div className="pt-4">
                           <button
                             onClick={applyConfig}
-                            className="w-full px-3 py-2 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                            className="w-full px-4 py-2.5 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium border border-indigo-100"
                           >
-                            应用配置
+                            ✓ 应用配置
                           </button>
                         </div>
                       </div>
                     )}
 
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={aiInput}
-                        onChange={(e) => setAiInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAiSend()}
-                        placeholder="输入消息或点击上方快捷指令..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                    <div className="flex space-x-3 items-stretch">
+                      <div className="flex-1 relative">
+                        <textarea
+                          value={aiInput}
+                          onChange={(e) => setAiInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleAiSend();
+                            }
+                          }}
+                          placeholder="输入消息或点击上方快捷指令... 按 Enter 发送，Shift+Enter 换行"
+                          className="w-full px-4 py-3 text-sm border border-gray-200 dark:border-slate-600 rounded-xl custom-select bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-sm focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-200 resize-none placeholder:text-xs dark:text-gray-100 dark:placeholder:text-gray-400"
+                          style={{minHeight: '44px', maxHeight: '120px'}}
+                          rows={1}
+                        />
+                      </div>
                       <button
                         onClick={handleAiSend}
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                        disabled={!aiInput.trim()}
+                        className="px-5 py-3 text-sm font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-slate-600 dark:disabled:to-slate-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none disabled:cursor-not-allowed flex items-center space-x-2 h-full border border-indigo-100"
                       >
-                        发送
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        <span>发送</span>
                       </button>
                     </div>
                   </div>

@@ -33,12 +33,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({ data, name, isRoot = false }) => {
   
   // 渲染简单值
   const renderSimpleValue = (value: any) => {
-    if (value === null) return <span className="text-gray-500">null</span>;
-    if (value === undefined) return <span className="text-gray-500">undefined</span>;
-    if (typeof value === 'string') return <span className="text-green-600 tree-string">"{value}"</span>;
-    if (typeof value === 'number') return <span className="text-blue-600 tree-number">{value}</span>;
-    if (typeof value === 'boolean') return <span className="text-purple-600 tree-boolean">{value.toString()}</span>;
-    return <span>{String(value)}</span>;
+    if (value === null) return <span className="text-gray-400 dark:text-gray-500 italic">null</span>;
+    if (value === undefined) return <span className="text-gray-400 dark:text-gray-500 italic">undefined</span>;
+    if (typeof value === 'string') return <span className="text-emerald-600 dark:text-emerald-400 tree-string font-mono">"{value}"</span>;
+    if (typeof value === 'number') return <span className="text-sky-600 dark:text-sky-400 tree-number font-mono">{value}</span>;
+    if (typeof value === 'boolean') return <span className="text-purple-600 dark:text-purple-400 tree-boolean font-mono">{value.toString()}</span>;
+    return <span className="font-mono">{String(value)}</span>;
   };
   
   // 渲染对象或数组的子节点
@@ -98,7 +98,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ data, name, isRoot = false }) => {
     if (isSimpleValue(data)) {
       return (
         <div className="flex items-start py-1">
-          {name && <span className="text-gray-700 mr-2 font-medium mt-1">{name}:</span>}
+          {name && <span className="text-gray-700 dark:text-gray-300 mr-2 font-medium mt-1">{name}:</span>}
           {renderSimpleValue(data)}
         </div>
       );
@@ -106,17 +106,17 @@ const TreeNode: React.FC<TreeNodeProps> = ({ data, name, isRoot = false }) => {
     
     return (
       <div 
-        className="flex items-start cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors duration-150"
+        className="flex items-start cursor-pointer hover:bg-white/10 dark:hover:bg-gray-700/30 px-2 py-1 rounded-lg transition-all duration-200 group"
         onClick={(e) => {
           e.stopPropagation();
           toggleExpanded();
         }}
       >
-        <span className="text-gray-500 mr-1 text-xs w-4 mt-1">
+        <span className="text-gray-400 dark:text-gray-500 mr-2 text-xs w-4 mt-1 transition-transform duration-200 group-hover:text-gray-300 dark:group-hover:text-gray-400">
           {isExpanded ? '▼' : '▶'}
         </span>
-        {name && <span className="text-gray-700 mr-2 font-medium mt-1">{name}:</span>}
-        <span className="text-gray-500 mr-2 text-xs mt-1">{getTypeIcon()}</span>
+        {name && <span className="text-gray-700 dark:text-gray-300 mr-2 font-semibold mt-1">{name}:</span>}
+        <span className="text-gray-400 dark:text-gray-500 mr-2 text-xs mt-1 opacity-70">{getTypeIcon()}</span>
         <span className="font-medium mt-1">{getValueDisplay()}</span>
       </div>
     );
@@ -149,7 +149,7 @@ interface TreeRendererProps {
 
 const TreeRenderer: React.FC<TreeRendererProps> = ({ data, className = '' }) => {
   return (
-    <div className={`bg-gray-50 rounded-lg border border-gray-200 p-4 ${className}`}>
+    <div className={`bg-transparent ${className}`}>
       <TreeNode data={data} isRoot={true} />
     </div>
   );

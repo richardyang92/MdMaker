@@ -22,6 +22,7 @@ interface MessageItemProps {
 
 const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, requestParams, executedOperations, setExecutedOperations }) => {
   const [showRaw, setShowRaw] = useState(false);
+  const [showRequestParamsRaw, setShowRequestParamsRaw] = useState(false);
   
   // 解析消息中的各种标记
   const hasThink = message.content.includes('think>');
@@ -173,7 +174,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
     const jsonMatches = parseJSONContent(content);
     
     if (jsonMatches.length === 0) {
-      return <div className="whitespace-pre-wrap">{content}</div>;
+      return <div className="whitespace-pre-wrap leading-relaxed dark:text-gray-200">{content}</div>;
     }
     
     const elements = [];
@@ -183,7 +184,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
       // 添加JSON之前的文本
       if (jsonMatch.startIndex > lastIndex) {
         elements.push(
-          <span key={`text-${index}`}>
+          <span key={`text-${index}`} className="leading-relaxed dark:text-gray-200">
             {content.substring(lastIndex, jsonMatch.startIndex)}
           </span>
         );
@@ -191,9 +192,10 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
       
       // 添加JSON组件
       elements.push(
-        <div key={`json-${index}`} className="my-2">
-          <div className="bg-gray-50 rounded-lg border border-gray-200">
-            <div className="px-4 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
+        <div key={`json-${index}`} className="my-3">
+          <div className="bg-gradient-to-br from-gray-50/80 to-gray-100/60 dark:from-gray-800/80 dark:to-gray-700/60 rounded-xl border border-gray-200/50 dark:border-gray-600/50 shadow-sm backdrop-blur-sm">
+            <div className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200/50 dark:border-gray-600/50 flex items-center">
+              <span className="mr-2">📊</span>
               JSON数据
             </div>
             <div className="p-4">
@@ -209,48 +211,73 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
     // 添加最后的文本
     if (lastIndex < content.length) {
       elements.push(
-        <span key="text-end">
+        <span key="text-end" className="leading-relaxed dark:text-gray-200">
           {content.substring(lastIndex)}
         </span>
       );
     }
     
-    return <div className="whitespace-pre-wrap">{elements}</div>;
+    return <div className="whitespace-pre-wrap dark:text-gray-200">{elements}</div>;
   };
 
   return (
-    <div className={`text-sm ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
-      <div className={`block px-3 py-2 rounded-lg ${message.role === 'user' ? 'message-user ml-auto' : 'message-assistant mr-auto'} w-full max-w-full`}>
+    <div className={`text-sm ${message.role === 'user' ? 'text-right' : 'text-left'} mb-4`}>
+      {/* 头像和名称 */}
+      <div className={`flex items-center mb-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+        {message.role === 'user' ? (
+          <>
+            <div>
+              <div className="font-semibold text-gray-700 dark:text-gray-300 text-xs">用户</div>
+            </div>
+            <div className="ml-3 border border-indigo-100 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+              U
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="border border-indigo-100 w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+              🤖
+            </div>
+            <div className="ml-3">
+              <div className="font-semibold text-gray-700 dark:text-gray-300 text-xs">AI助手</div>
+            </div>
+          </>
+        )}
+      </div>
+      
+      <div className={`inline-block px-4 py-3 rounded-2xl max-w-full transition-all duration-300 hover:shadow-lg ${message.role === 'user' 
+        ? 'message-user ml-auto bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md hover:shadow-xl' 
+        : 'message-assistant mr-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-600'}`}>
         <>
           {/* 显示思考过程和上下文 */}
           {hasThink && thinkMatch && (
-            <details className="mb-2">
-              <summary className="cursor-pointer text-xs summary-text hover:text-hover-text">
-                显示思考过程 {thinkMatch[1] && `(v${thinkMatch[1]})`}
+            <details className="mb-3">
+              <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100 transition-opacity duration-200">
+                💭 思考过程 {thinkMatch[1] && `(v${thinkMatch[1]})`}
               </summary>
-              <div className="mt-1 p-2 details-bg rounded text-xs details-text whitespace-pre-wrap">
+              <div className="mt-2 p-3 bg-gray-100/10 dark:bg-gray-800/20 rounded-xl text-xs whitespace-pre-wrap backdrop-blur-sm">
                 {thinkMatch[2].trim()}
                 {contextMatch && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <h4 className="font-medium">上下文:</h4>
+                  <div className="mt-3 pt-3 border-t border-white/20">
+                    <h4 className="font-semibold mb-2">📋 上下文:</h4>
                     {contextMatch.map((ctx, i) => (
-                      <div key={i} className="mt-1">{ctx.replace(/<\/?context>/g, '')}</div>
+                      <div key={i} className="mt-1 opacity-90">{ctx.replace(/<\/?context>/g, '')}</div>
                     ))}
                   </div>
                 )}
                 {suggestionMatch && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <h4 className="font-medium">建议:</h4>
+                  <div className="mt-3 pt-3 border-t border-white/20">
+                    <h4 className="font-semibold mb-2">💡 建议:</h4>
                     {suggestionMatch.map((sug, i) => (
-                      <div key={i} className="mt-1">{sug.replace(/<\/?suggestion>/g, '')}</div>
+                      <div key={i} className="mt-1 opacity-90">{sug.replace(/<\/?suggestion>/g, '')}</div>
                     ))}
                   </div>
                 )}
                 {errorMatch && (
-                  <div className="mt-2 pt-2 border-t border-gray-200">
-                    <h4 className="font-medium text-red-600">错误:</h4>
+                  <div className="mt-3 pt-3 border-t border-white/20">
+                    <h4 className="font-semibold mb-2 text-red-300">⚠️ 错误:</h4>
                     {errorMatch.map((err, i) => (
-                      <div key={i} className="mt-1 text-red-500">{err.replace(/<\/?error>/g, '')}</div>
+                      <div key={i} className="mt-1 text-red-200">{err.replace(/<\/?error>/g, '')}</div>
                     ))}
                   </div>
                 )}
@@ -259,58 +286,70 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
           )}
           <div className="mb-2">
             <button
-              onClick={() => setShowRaw(!showRaw)}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              onClick={() => {
+                setShowRaw(!showRaw);
+                setShowRequestParamsRaw(!showRequestParamsRaw);
+              }}
+              className="text-sm opacity-70 hover:opacity-100 underline transition-opacity duration-200 bg-transparent border-none p-0 m-0"
             >
-              {showRaw ? '显示渲染' : '显示原始'}
+              {showRaw ? '👁️ 显示渲染' : '📝 显示原始'}
             </button>
           </div>
           {showRaw ? (
-            <pre className="whitespace-pre-wrap text-xs pre-bg p-2 rounded border">{mainContent}</pre>
+            <pre className="whitespace-pre-wrap text-xs bg-gray-900/10 dark:bg-gray-100/10 p-3 rounded-xl font-mono">{mainContent}</pre>
           ) : (
             // 只对已完成的消息进行JSON检测和渲染
-            isStreamingComplete ? renderContentWithJSON(mainContent) : <div className="whitespace-pre-wrap">{mainContent}</div>
+            isStreamingComplete ? renderContentWithJSON(mainContent) : <div className="whitespace-pre-wrap leading-relaxed dark:text-gray-200">{mainContent}</div>
           )}
           
           {/* 显示function call执行按钮 */}
           {functionCall && (
-            <div className="mt-2 pt-2 border-t border-gray-200">
+            <div className="mt-4 pt-3 border-t border-white/20">
               <button
                 onClick={() => executeFunctionCall(functionCall)}
                 disabled={executedOperations[message.id]}
-                className={`px-3 py-2 text-xs rounded ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 transform hover:scale-105 ${
                   executedOperations[message.id]
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                    : 'bg-green-500 text-white hover:bg-green-600'
+                    ? 'bg-gray-400/20 text-gray-400 cursor-not-allowed backdrop-blur-sm' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:from-green-600 hover:to-emerald-600 hover:shadow-xl active:scale-95'
                 }`}
               >
-                执行操作
+                {executedOperations[message.id] ? '✅ 已执行' : '⚡ 执行操作'}
               </button>
-              <div className="mt-1 text-xs text-gray-600">
-                操作类型: {functionCall.name}
+              <div className="mt-2 text-xs opacity-75">
+                <span className="font-medium">操作类型:</span> {functionCall.name}
               </div>
             </div>
           )}
           
           {/* 流式响应指示器 */}
           {isStreaming && !isStreamingComplete && (
-            <div className="flex items-center mt-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1 delay-75"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-150"></div>
-              <span className="text-xs text-gray-500 ml-2">AI正在输入...</span>
+            <div className="flex items-center mt-3">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse delay-75"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse delay-150"></div>
+              </div>
+              <span className="text-xs opacity-70 ml-3 animate-pulse">AI正在思考中...</span>
             </div>
           )}
           
           {/* 显示请求参数 */}
           {message.role === 'user' && requestParams && (
-            <div className="text-left">
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs summary-text hover:text-hover-text">
-                  显示请求参数
+            <div className="text-left mt-3">
+              <details className="group">
+                <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100 transition-opacity duration-200 flex items-center">
+                  <span className="mr-1 group-open:rotate-90 transition-transform duration-200">▶</span>
+                  🔧 显示请求参数
                 </summary>
-                <div className="mt-1 details-bg rounded">
-                  <TreeRenderer data={requestParams} />
+                <div className="mt-2 p-3 bg-gray-100/10 dark:bg-gray-800/20 rounded-xl backdrop-blur-sm">
+                  {showRequestParamsRaw ? (
+                    <pre className="whitespace-pre-wrap text-xs bg-gray-900/10 dark:bg-gray-100/10 p-3 rounded-xl font-mono">
+                      {JSON.stringify(requestParams, null, 2)}
+                    </pre>
+                  ) : (
+                    <TreeRenderer data={requestParams} />
+                  )}
                 </div>
               </details>
             </div>
