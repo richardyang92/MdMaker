@@ -1090,7 +1090,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                   </button>
                   <input
                     type="file"
-                    accept=".md,.mdc,.txt"
+                    accept=".md,.mdc"
                     onChange={handleFileUpload}
                     className="hidden"
                     id="file-upload"
@@ -1098,10 +1098,18 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                   <label
                     htmlFor="file-upload"
                     className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 hover:border-gray-300 dark:hover:border-slate-500 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                    title="支持 .md 和 .mdc 文件格式"
                   >
                     打开
                   </label>
                  <div className="flex items-center space-x-1">
+                   {/* 保存按钮 */}
+                   <button
+                     onClick={handleSave}
+                     className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-sm hover:shadow-md transition-all duration-200"
+                   >
+                     保存
+                   </button>
                    {/* 保存格式下拉选择框 */}
                    <div className="w-24">
                      <CustomDropdown
@@ -1114,13 +1122,6 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                        theme={theme}
                      />
                    </div>
-                   {/* 保存按钮 */}
-                   <button
-                     onClick={handleSave}
-                     className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-sm hover:shadow-md transition-all duration-200"
-                   >
-                     保存
-                   </button>
                  </div>
                   <div className="flex items-center space-x-1 border-l border-gray-200 dark:border-slate-600 pl-2">
                     <button

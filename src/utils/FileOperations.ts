@@ -200,7 +200,7 @@ export class FileOperations {
    */
   isSupportedFileType(filename: string): boolean {
     const ext = filename.toLowerCase().split('.').pop();
-    return ext === 'md' || ext === 'mdc' || ext === 'mdai' || ext === 'txt';
+    return ext === 'md' || ext === 'mdc';
   }
 
   /**
