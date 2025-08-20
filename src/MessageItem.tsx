@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
 import TreeRenderer from './TreeRenderer';
 
-interface Message {
-  role: string;
-  content: string;
-  id: string;
-  function_call?: {
-    name: string;
-    arguments: string;
-  };
-}
+import { AiMessage } from './types/MdAiFile';
+
+interface Message extends AiMessage {}
 
 interface MessageItemProps {
   message: Message;

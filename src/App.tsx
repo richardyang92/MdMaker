@@ -8,6 +8,10 @@ import MessageItem from './MessageItem';
 import TreeDemo from './TreeDemo';
 import logo from '/logo.svg';
 import { generateSystemMessage } from './promptTemplates';
+import { MdAiFileHandler } from './utils/MdAiFileHandler';
+import { FileOperations } from './utils/FileOperations';
+import { AiMessage } from './types/MdAiFile';
+import { createAssistantMessage, createUserMessage } from './utils/messageUtils';
 // 动态导入Monaco Editor
 const Editor = React.lazy(() => import('@monaco-editor/react'));
 
@@ -196,12 +200,19 @@ function App() {
   // 主题状态
   const [theme, setTheme] = useState<'light' | 'dark' | 'eye-protect'>('light');
   
+  // 文件处理器
+  const [fileHandler] = useState(() => new MdAiFileHandler());
+  const [fileOperations] = useState(() => new FileOperations(fileHandler));
+  
   // 历史记录状态，用于实现撤回功能
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   
   // 已执行操作的状态，用于跟踪哪些操作已被执行
   const [executedOperations, setExecutedOperations] = useState<Record<string, boolean>>({});
+  
+  // 保存格式状态
+  const [saveFormat, setSaveFormat] = useState<'md' | 'mdc'>('mdc');
   
   const [markdown, setMarkdown] = useState(`# Hello Markdown
 
@@ -263,7 +274,7 @@ $$
 >> 嵌套引用
 
 开始编写你的markdown...`);
-  const [aiMessages, setAiMessages] = useState<Array<{role: string, content: string, id: string}>>([]);
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
   
   // 存储用户消息及其对应的请求参数
   const [userMessageParams, setUserMessageParams] = useState<Record<string, any>>({});
@@ -351,33 +362,14 @@ $$
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // 在组件初始化时将初始markdown内容保存到历史记录中
+  // 在组件初始化时创建新文件
   useEffect(() => {
-    saveToHistory(markdown);
+    const newFile = fileHandler.createNewFile();
+    setMarkdown(newFile.markdown);
+    setAiMessages(newFile.aiMessages as AiMessage[]);
+    saveToHistory(newFile.markdown);
     setHistoryIndex(0);
-    
-    // 添加欢迎消息
-    const welcomeMessage = {
-      role: 'assistant' as const,
-      content: `👋 欢迎使用AI智能Markdown编辑器！
-
-我是您的专属AI助手，可以帮助您：
-- 📝 优化和格式化Markdown内容
-- 📊 创建和编辑表格、图表
-- 🔍 检查和修正LaTeX数学公式
-- 💡 提供内容改进建议
-- ⚡ 快速生成各种Markdown元素
-
-您可以：
-1. 在左侧编辑器中编写或粘贴Markdown内容
-2. 在下方输入框向我提问或寻求帮助
-3. 使用快捷按钮快速获取常用功能
-
-有什么我可以帮助您的吗？`,
-      id: `welcome-${Date.now()}`
-    };
-    setAiMessages([welcomeMessage]);
-  }, []);
+  }, [fileHandler]);
 
   // 实现编辑区和预览区的滚动联动
   useEffect(() => {
@@ -571,9 +563,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
       
       if (result.success) {
         // 显示成功消息
-        setAiMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `✅ ${result.message}
+        setAiMessages(prev => [...prev, createAssistantMessage(`✅ ${result.message}
           
 🔄 配置已立即生效，无需重启服务器
           
@@ -583,26 +573,16 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
 - VITE_AI_API_KEY: ${aiConfig.apiKey ? '已设置' : '未设置'}
 - VITE_AI_MODEL: ${aiConfig.model || '未设置'}
 - VITE_AI_THINKING_MODE: ${aiConfig.thinkingMode ? 'true' : 'false'}
-- VITE_AI_MAX_TOKENS: ${aiConfig.maxTokens}`,
-          id: Date.now().toString()
-        }]);
+- VITE_AI_MAX_TOKENS: ${aiConfig.maxTokens}`)]);
       } else {
         // 显示错误消息
-        setAiMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `❌ 保存配置失败: ${result.message}`,
-          id: Date.now().toString()
-        }]);
+        setAiMessages(prev => [...prev, createAssistantMessage(`❌ 保存配置失败: ${result.message}`)]);
       }
     } catch (error) {
       // 如果后端请求失败，显示错误消息
-      setAiMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: `❌ 保存配置时出错: ${error instanceof Error ? error.message : '未知错误'}
+      setAiMessages(prev => [...prev, createAssistantMessage(`❌ 保存配置时出错: ${error instanceof Error ? error.message : '未知错误'}
         
-请确保后端服务器正在运行 (npm run dev:server)`,
-        id: Date.now().toString()
-      }]);
+请确保后端服务器正在运行 (npm run dev:server)`)]);
     }
   };
 
@@ -746,30 +726,59 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
     }
   };
 
-  const handleSave = () => {
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'document.md';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleSave = async () => {
+    try {
+      // 更新文件处理器中的当前内容
+      fileHandler.updateMarkdown(markdown);
+      
+      // 添加当前AI消息到文件处理器
+      const currentFile = fileHandler.getCurrentFile();
+      if (currentFile) {
+        currentFile.aiMessages = aiMessages;
+        currentFile.userMessageParams = userMessageParams;
+      }
+      
+      const filename = fileOperations.getSuggestedFilename();
+      await fileOperations.saveToFile(filename, saveFormat);
+      
+      // 显示成功消息
+      const formatInfo = {
+        md: { ext: 'md', desc: '传统Markdown' },
+        mdc: { ext: 'mdc', desc: 'AI增强格式' }
+      };
+      setAiMessages(prev => [...prev, createAssistantMessage(`✅ 文件保存成功！\n\n📄 文件名: ${filename}.${formatInfo[saveFormat].ext}\n💾 格式: ${formatInfo[saveFormat].desc}`, `save-success-${Date.now()}`)]);
+    } catch (error) {
+      setAiMessages(prev => [...prev, createAssistantMessage(`❌ 文件保存失败: ${error instanceof Error ? error.message : '未知错误'}`, `save-error-${Date.now()}`)]);
+    }
   };
 
   const handleNew = () => {
     setMarkdownWithHistory('# New Document\n\nStart writing...');
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setMarkdownWithHistory(e.target?.result as string);
-      };
-      reader.readAsText(file);
+      try {
+        const loadedFile = await fileOperations.loadFromFileInput(file);
+        setMarkdown(loadedFile.markdown);
+        setAiMessages(loadedFile.aiMessages as AiMessage[]);
+        setUserMessageParams(loadedFile.userMessageParams || {});
+        
+        // 更新文件处理器中的当前文件
+        fileHandler.setCurrentFile(loadedFile);
+        
+        // 重置历史记录
+        const newHistory = [loadedFile.markdown];
+        setHistory(newHistory);
+        setHistoryIndex(0);
+        
+        // 显示成功消息
+        const formatType = file.name.endsWith('.mdc') ? 'AI增强格式' : file.name.endsWith('.md') ? '传统Markdown' : '未知格式';
+        setAiMessages(prev => [...prev, createAssistantMessage(`✅ 文件加载成功！\n\n📄 文件名: ${file.name}\n📊 包含 ${loadedFile.aiMessages.length} 条AI对话记录\n💾 格式: ${formatType}`, `load-success-${Date.now()}`)]);
+      } catch (error) {
+        setAiMessages(prev => [...prev, createAssistantMessage(`❌ 文件加载失败: ${error instanceof Error ? error.message : '未知错误'}`, `load-error-${Date.now()}`)]);
+      }
     }
   };
 
@@ -840,11 +849,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
         [messageId]: requestParams
       }));
       
-      setAiMessages(prev => [...prev, { 
-        role: 'user', 
-        content: userMessage,
-        id: messageId
-      }]);
+      setAiMessages(prev => [...prev, createUserMessage(userMessage, messageId)]);
       setAiInput('');
       
       // 检查是否需要配置
@@ -882,11 +887,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
           configMessage += `请根据当前提供商要求完善配置。`;
         }
         
-        setAiMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: configMessage,
-          id: Date.now().toString()
-        }]);
+        setAiMessages(prev => [...prev, createAssistantMessage(configMessage, Date.now().toString())]);
         return;
       }
 
@@ -902,11 +903,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
         
         // 创建一个新的流式响应消息
         const streamMessageId = `stream-${Date.now()}`;
-        setAiMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: '',
-          id: streamMessageId
-        }]);
+        setAiMessages(prev => [...prev, createAssistantMessage('', streamMessageId)]);
         
         // 使用generateSystemMessage函数生成系统提示词
         const isQwenModel = /^qwen\/qwen/.test(aiConfig.model || '');
@@ -1020,18 +1017,10 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
           }
         } else {
           const errorData = await response.json().catch(() => ({}));
-          setAiMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: `API调用失败：${errorData.error?.message || response.statusText}\n\n当前配置：\n- Base URL: ${aiConfig.baseUrl}\n- Model: ${aiConfig.model}\n- Provider: ${providers[aiConfig.provider as keyof typeof providers]?.name}\n\n请检查：\n1. 服务是否已启动\n2. 网络连接是否正常\n3. 配置是否正确`,
-            id: Date.now().toString()
-          }]);
+          setAiMessages(prev => [...prev, createAssistantMessage(`API调用失败：${errorData.error?.message || response.statusText}\n\n当前配置：\n- Base URL: ${aiConfig.baseUrl}\n- Model: ${aiConfig.model}\n- Provider: ${providers[aiConfig.provider as keyof typeof providers]?.name}\n\n请检查：\n1. 服务是否已启动\n2. 网络连接是否正常\n3. 配置是否正确`, Date.now().toString())]);
         }
       } catch (error) {
-        setAiMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `连接失败：${error instanceof Error ? error.message : '未知错误'}\n\n当前配置：\n- Base URL: ${aiConfig.baseUrl}\n- Model: ${aiConfig.model}\n- Provider: ${providers[aiConfig.provider as keyof typeof providers]?.name}\n\n请检查：\n1. 服务是否已启动\n2. 网络连接是否正常\n3. 配置是否正确`,
-          id: Date.now().toString()
-        }]);
+        setAiMessages(prev => [...prev, createAssistantMessage(`连接失败：${error instanceof Error ? error.message : '未知错误'}\n\n当前配置：\n- Base URL: ${aiConfig.baseUrl}\n- Model: ${aiConfig.model}\n- Provider: ${providers[aiConfig.provider as keyof typeof providers]?.name}\n\n请检查：\n1. 服务是否已启动\n2. 网络连接是否正常\n3. 配置是否正确`, Date.now().toString())]);
       }
     }
   };
@@ -1101,7 +1090,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                   </button>
                   <input
                     type="file"
-                    accept=".md,.txt"
+                    accept=".md,.mdc,.txt"
                     onChange={handleFileUpload}
                     className="hidden"
                     id="file-upload"
@@ -1112,12 +1101,27 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                   >
                     打开
                   </label>
-                  <button
-                    onClick={handleSave}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-sm hover:shadow-md transition-all duration-200"
-                  >
-                    保存
-                  </button>
+                 <div className="flex items-center space-x-1">
+                   {/* 保存格式下拉选择框 */}
+                   <div className="w-24">
+                     <CustomDropdown
+                       options={[
+                         { value: 'mdc', label: 'MDC格式' },
+                         { value: 'md', label: 'MD格式' }
+                       ]}
+                       value={saveFormat}
+                       onChange={(value) => setSaveFormat(value as 'md' | 'mdc')}
+                       theme={theme}
+                     />
+                   </div>
+                   {/* 保存按钮 */}
+                   <button
+                     onClick={handleSave}
+                     className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-sm hover:shadow-md transition-all duration-200"
+                   >
+                     保存
+                   </button>
+                 </div>
                   <div className="flex items-center space-x-1 border-l border-gray-200 dark:border-slate-600 pl-2">
                     <button
                       onClick={handleUndo}
@@ -1396,9 +1400,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
                         <button
                           onClick={() => {
                             // 重置聊天并添加欢迎消息
-                            const welcomeMessage = {
-                              role: 'assistant' as const,
-                              content: `👋 欢迎使用AI智能Markdown编辑器！
+                            setAiMessages([createAssistantMessage(`👋 欢迎使用AI智能Markdown编辑器！
 
 我是您的专属AI助手，可以帮助您：
 - 📝 优化和格式化Markdown内容
@@ -1412,10 +1414,7 @@ VITE_AI_MAX_TOKENS=${aiConfig.maxTokens}
 2. 在下方输入框向我提问或寻求帮助
 3. 使用快捷按钮快速获取常用功能
 
-有什么我可以帮助您的吗？`,
-                              id: `welcome-${Date.now()}`
-                            };
-                            setAiMessages([welcomeMessage]);
+有什么我可以帮助您的吗？`)]);
                             setUserMessageParams({});
                           }}
                           className="px-3 py-2 text-xs bg-[var(--button-danger-bg)] hover:bg-[var(--button-danger-hover-bg)] text-[var(--button-danger-text)] rounded-full border border-[var(--border-color)] hover:shadow-md transition-all duration-200 shadow-sm"
