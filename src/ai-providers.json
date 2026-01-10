@@ -4,17 +4,7 @@
     "baseUrl": "https://api.deepseek.com/v1",
     "models": [
       "deepseek-chat",
-      "deepseek-coder"
-    ],
-    "requiresKey": true,
-    "maxTokens": 1000
-  },
-  "kimi": {
-    "name": "Kimi",
-    "baseUrl": "https://api.moonshot.cn/v1",
-    "models": [
-      "kimi-thinking-preview",
-      "kimi-k2-0711-preview"
+      "deepseek-reasoner"
     ],
     "requiresKey": true,
     "maxTokens": 1000
@@ -28,15 +18,6 @@
     ],
     "requiresKey": false,
     "supportsThinkingMode": true,
-    "maxTokens": 1000
-  },
-  "custom": {
-    "name": "自定义",
-    "baseUrl": "",
-    "models": [
-      ""
-    ],
-    "requiresKey": true,
     "maxTokens": 1000
   }
 }

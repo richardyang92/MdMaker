@@ -147,7 +147,23 @@ export function generateSystemPrompt(config: PromptTemplateConfig): string {
     ? FUNCTION_CALL_TEMPLATE 
     : SIMPLE_FUNCTION_CALL_TEMPLATE;
   
-  let basePrompt = `你是一个${mode}的Markdown编辑器助手(${version})，支持LaTeX和${features}的内容操作。\n${functionCallTemplate}`;
+  let basePrompt = `你是一个${mode}的Markdown编辑器助手(${version})，支持LaTeX和${features}的内容操作。
+
+## 重要格式要求
+1. **严格保持换行符格式**: 返回的内容必须严格保持原有的换行符数量和位置
+   - 不要随意增加或减少换行符
+   - 不要随意添加或删除空行
+   - 保持原有段落之间的空白结构
+   - 保持原有代码块的换行格式
+   - 保持原有列表的缩进和换行
+
+2. **内容格式规范**:
+   - 返回的Markdown内容必须格式规范、结构清晰
+   - 使用适当的标题层级、列表、引用等Markdown语法
+   - 确保LaTeX公式语法正确
+   - 保持代码块的语法高亮标记
+
+${functionCallTemplate}`;
   
   // 如果是Qwen模型且非思考模式，添加/no_think标志
   if (!config.thinkingMode && config.isQwenModel) {

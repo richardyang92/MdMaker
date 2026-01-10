@@ -22,6 +22,7 @@
 ### 编辑体验
 - **实时预览** - 所见即所得的Markdown编辑体验
 - **多面板布局** - 支持编辑区、预览区、AI助手三栏智能布局
+- **滚动同步** - 编辑器和预览区智能滚动同步，保持位置一致
 - **快捷键支持** - 完整的键盘快捷键操作
 - **撤销/重做** - 无限层级的编辑历史管理
 
@@ -30,7 +31,13 @@
 - **格式美化** - 自动优化Markdown格式和结构
 - **LaTeX检查** - 智能识别和修复数学公式错误
 - **表格生成** - 自然语言生成复杂表格
-- **多模型支持** - DeepSeek、Kimi、LM Studio等主流AI模型
+- **多模型支持** - DeepSeek、LM Studio等多种AI模型
+- **@智能引用** - 创新的@语法，支持引用选区、光标位置、完整文档
+
+### AI提供商支持
+- **DeepSeek** - 支持深度思考和标准对话模式
+- **LM Studio** - 本地AI模型部署，支持思考模式
+- **可扩展架构** - 基于JSON配置的AI提供商管理，轻松添加新服务
 
 ### 文档管理
 - **本地存储** - 自动保存编辑内容到浏览器缓存
@@ -170,12 +177,39 @@ npm run build:all    # 构建并预览
 | **📊 表格生成** | 自然语言创建表格 | "创建一个3列的产品对比表" |
 | **🔍 公式检查** | 验证LaTeX语法 | 自动修复数学公式错误 |
 | **💡 内容扩展** | 基于大纲生成内容 | 根据标题自动生成段落 |
+| **🎯 智能引用** | @语法引用文档内容 | @selection 引用选中文本 |
+
+#### @智能引用语法
+在AI助手中输入 `@` 符号可快速引用文档内容：
+
+| 语法 | 功能 | 说明 |
+|------|------|------|
+| `@selection` | 引用选中文本 | 自动包含选区内容和行号信息 |
+| `@selection#L5` | 引用指定行 | 精确引用第5行内容 |
+| `@selection#L3-7` | 引用行范围 | 引用第3到第7行的内容 |
+| `@cursor` | 引用光标位置 | 引用光标周围100字符的上下文 |
+| `@document` | 引用完整文档 | 引用整个文档内容（最多1000字符） |
+
+**使用示例：**
+```
+请帮我优化这段文字的@selection
+总结从@selection#L1到@selection#L10的要点
+根据@document生成文章大纲
+在@cursor位置添加一个过渡段落
+```
+
+**快捷键支持：**
+- `↑` / `↓` - 在引用选项中导航
+- `Enter` / `Tab` - 确认选择
+- `Esc` - 取消菜单
 
 #### 支持的AI模型
-- **DeepSeek** - 国产大模型，代码能力强
-- **Kimi** - 长文本处理优秀，支持128K上下文
+- **DeepSeek** - 国产大模型，支持深度思考和标准对话模式
+  - 模型：`deepseek-chat`、`deepseek-reasoner`
+  - 特点：代码能力强，支持联网搜索
 - **LM Studio** - 本地部署，保护隐私
-- **自定义模型** - 支持任意OpenAI兼容API
+  - 模型：`qwen/qwen3-30b-a3b-2507`、`openai/gpt-oss-20b`
+  - 特点：支持思考模式，完全本地化运行
 
 #### 配置AI服务
 1. **获取API Key** - 从对应平台申请
@@ -261,17 +295,31 @@ graph TD
 ```
 MdMaker/
 ├── src/                          # 核心源码
-│   ├── App.tsx                  # 主应用状态管理
+│   ├── App.tsx                  # 主应用组件和状态管理
 │   ├── main.tsx                 # React应用入口
-│   ├── MessageItem.tsx          # AI对话组件
-│   ├── Tree*.tsx               # 树形数据可视化
+│   ├── MessageItem.tsx          # AI对话消息组件
+│   ├── TreeDemo.tsx            # 树形数据可视化演示
+│   ├── TreeRenderer.tsx        # 树形结构渲染器
+│   ├── AtSuggestionsMenu.tsx   # @语法建议菜单组件
+│   ├── useAtSyntax.ts          # @语法交互Hook
+│   ├── AtSyntaxParser.ts       # @语法解析工具
 │   ├── promptTemplates.ts      # AI提示词模板
-│   └── ai-providers.json       # AI服务配置
-├── public/logo.svg             # 应用图标
+│   ├── ai-providers.json       # AI提供商配置
+│   └── index.css               # 全局样式
+├── public/                       # 静态资源
+│   └── logo.svg                # 应用图标
 ├── server.js                   # Express配置服务器
 ├── package.json                # 项目依赖配置
-└── dist/                       # 构建输出目录
+├── vite.config.ts              # Vite构建配置
+├── tailwind.config.js          # Tailwind CSS配置
+└── tsconfig.json               # TypeScript配置
 ```
+
+### 核心模块说明
+- **AtSuggestionsMenu.tsx** - 浮动菜单组件，提供@语法选项
+- **useAtSyntax.ts** - React Hook，管理@语法的所有交互逻辑
+- **AtSyntaxParser.ts** - 解析和替换@标记的工具函数
+- **ai-providers.json** - 可扩展的AI提供商配置文件
 
 
 

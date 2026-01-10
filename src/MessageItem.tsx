@@ -30,13 +30,21 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
   const contextMatch = message.content.match(/<context>([\s\S]*?)<\/context>/g);
   const suggestionMatch = message.content.match(/<suggestion>([\s\S]*?)<\/suggestion>/g);
   const errorMatch = message.content.match(/<error>([\s\S]*?)<\/error>/g);
-  
+
+  // 解析@引用标记
+  const atReferenceMatch = message.content.match(/> \[选区引用\]([\s\S]*?)(?=\n\n|$)/g);
+  const atCursorMatch = message.content.match(/> \[光标位置上下文\]([\s\S]*?)(?=\n\n|$)/g);
+  const atDocumentMatch = message.content.match(/> \[完整文档\]([\s\S]*?)(?=\n\n|$)/g);
+
   // 移除所有标记获取主内容
   const mainContent = message.content
     .replace(/<think(?:\s+version="\d+\.\d+")?>[\s\S]*?<\/think>/, '')
     .replace(/<context>[\s\S]*?<\/context>/g, '')
     .replace(/<suggestion>[\s\S]*?<\/suggestion>/g, '')
     .replace(/<error>[\s\S]*?<\/error>/g, '')
+    .replace(/> \[选区引用\][\s\S]*?(?=\n\n|$)/g, '')
+    .replace(/> \[光标位置上下文\][\s\S]*?(?=\n\n|$)/g, '')
+    .replace(/> \[完整文档\][\s\S]*?(?=\n\n|$)/g, '')
     .trim();
   
   // 检查是否是流式响应消息（ID以stream-开头）
@@ -172,29 +180,35 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
   // 渲染带JSON的内容
   const renderContentWithJSON = (content: string) => {
     const jsonMatches = parseJSONContent(content);
-    
+
     if (jsonMatches.length === 0) {
-      return <div className="whitespace-pre-wrap leading-relaxed dark:text-gray-200">{content}</div>;
+      return <div className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-primary)' }}>{content}</div>;
     }
-    
+
     const elements = [];
     let lastIndex = 0;
-    
+
     jsonMatches.forEach((jsonMatch, index) => {
       // 添加JSON之前的文本
       if (jsonMatch.startIndex > lastIndex) {
         elements.push(
-          <span key={`text-${index}`} className="leading-relaxed dark:text-gray-200">
+          <span key={`text-${index}`} className="leading-relaxed" style={{ color: 'var(--text-primary)' }}>
             {content.substring(lastIndex, jsonMatch.startIndex)}
           </span>
         );
       }
-      
+
       // 添加JSON组件
       elements.push(
         <div key={`json-${index}`} className="my-3">
-          <div className="bg-gradient-to-br from-gray-50/80 to-gray-100/60 dark:from-gray-800/80 dark:to-gray-700/60 rounded-xl border border-gray-200/50 dark:border-gray-600/50 shadow-sm backdrop-blur-sm">
-            <div className="px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200/50 dark:border-gray-600/50 flex items-center">
+          <div className="rounded-lg shadow-sm backdrop-blur-sm transition-all duration-fast hover-lift" style={{
+            background: 'linear-gradient(to bottom right, var(--bg-tertiary), var(--bg-secondary))',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div className="px-4 py-3 text-sm font-semibold flex items-center transition-all duration-fast" style={{
+              color: 'var(--text-primary)',
+              borderBottom: '1px solid var(--border-color)'
+            }}>
               <span className="mr-2">📊</span>
               JSON数据
             </div>
@@ -204,20 +218,20 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
           </div>
         </div>
       );
-      
+
       lastIndex = jsonMatch.endIndex;
     });
-    
+
     // 添加最后的文本
     if (lastIndex < content.length) {
       elements.push(
-        <span key="text-end" className="leading-relaxed dark:text-gray-200">
+        <span key="text-end" className="leading-relaxed" style={{ color: 'var(--text-primary)' }}>
           {content.substring(lastIndex)}
         </span>
       );
     }
-    
-    return <div className="whitespace-pre-wrap dark:text-gray-200">{elements}</div>;
+
+    return <div className="whitespace-pre-wrap" style={{ color: 'var(--text-primary)' }}>{elements}</div>;
   };
 
   return (
@@ -227,57 +241,57 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
         {message.role === 'user' ? (
           <>
             <div>
-              <div className="font-semibold text-gray-700 dark:text-gray-300 text-xs">用户</div>
+              <div className="font-semibold text-text-secondary text-xs" style={{ color: 'var(--text-secondary)' }}>用户</div>
             </div>
-            <div className="ml-3 border border-indigo-100 w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+            <div className="ml-3 border w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm hover-lift" style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))', borderColor: 'var(--border-color)' }}>
               U
             </div>
           </>
         ) : (
           <>
-            <div className="border border-indigo-100 w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+            <div className="border w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm hover-lift" style={{ background: 'linear-gradient(135deg, var(--ai-accent), var(--ai-hover))', borderColor: 'var(--border-color)' }}>
               🤖
             </div>
             <div className="ml-3">
-              <div className="font-semibold text-gray-700 dark:text-gray-300 text-xs">AI助手</div>
+              <div className="font-semibold text-text-secondary text-xs" style={{ color: 'var(--text-secondary)' }}>AI助手</div>
             </div>
           </>
         )}
       </div>
-      
-      <div className={`inline-block px-4 py-3 rounded-2xl max-w-full transition-all duration-300 hover:shadow-lg ${message.role === 'user' 
-        ? 'message-user ml-auto bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md hover:shadow-xl' 
-        : 'message-assistant mr-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 shadow-md hover:shadow-xl border border-gray-200 dark:border-gray-600'}`}>
+
+      <div className={`inline-block px-4 py-3 max-w-full transition-all duration-fast hover-lift ${message.role === 'user'
+        ? 'message-user ml-auto shadow-sm hover:shadow-md'
+        : 'message-assistant mr-auto shadow-sm hover:shadow-md'}`}>
         <>
           {/* 显示思考过程和上下文 */}
           {hasThink && thinkMatch && (
             <details className="mb-3">
-              <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100 transition-opacity duration-200">
+              <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100 transition-opacity duration-fast" style={{ color: message.role === 'user' ? 'var(--accent-text)' : 'var(--text-secondary)' }}>
                 💭 思考过程 {thinkMatch[1] && `(v${thinkMatch[1]})`}
               </summary>
-              <div className="mt-2 p-3 bg-gray-100/10 dark:bg-gray-800/20 rounded-xl text-xs whitespace-pre-wrap backdrop-blur-sm">
+              <div className="mt-2 p-3 rounded-lg text-xs whitespace-pre-wrap backdrop-blur-sm" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
                 {thinkMatch[2].trim()}
                 {contextMatch && (
-                  <div className="mt-3 pt-3 border-t border-white/20">
-                    <h4 className="font-semibold mb-2">📋 上下文:</h4>
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
+                    <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>📋 上下文:</h4>
                     {contextMatch.map((ctx, i) => (
-                      <div key={i} className="mt-1 opacity-90">{ctx.replace(/<\/?context>/g, '')}</div>
+                      <div key={i} className="mt-1 opacity-90" style={{ color: 'var(--text-secondary)' }}>{ctx.replace(/<\/?context>/g, '')}</div>
                     ))}
                   </div>
                 )}
                 {suggestionMatch && (
-                  <div className="mt-3 pt-3 border-t border-white/20">
-                    <h4 className="font-semibold mb-2">💡 建议:</h4>
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
+                    <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>💡 建议:</h4>
                     {suggestionMatch.map((sug, i) => (
-                      <div key={i} className="mt-1 opacity-90">{sug.replace(/<\/?suggestion>/g, '')}</div>
+                      <div key={i} className="mt-1 opacity-90" style={{ color: 'var(--text-secondary)' }}>{sug.replace(/<\/?suggestion>/g, '')}</div>
                     ))}
                   </div>
                 )}
                 {errorMatch && (
-                  <div className="mt-3 pt-3 border-t border-white/20">
-                    <h4 className="font-semibold mb-2 text-red-300">⚠️ 错误:</h4>
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
+                    <h4 className="font-semibold mb-2" style={{ color: '#ef4444' }}>⚠️ 错误:</h4>
                     {errorMatch.map((err, i) => (
-                      <div key={i} className="mt-1 text-red-200">{err.replace(/<\/?error>/g, '')}</div>
+                      <div key={i} className="mt-1" style={{ color: '#f87171' }}>{err.replace(/<\/?error>/g, '')}</div>
                     ))}
                   </div>
                 )}
@@ -290,34 +304,118 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
                 setShowRaw(!showRaw);
                 setShowRequestParamsRaw(!showRequestParamsRaw);
               }}
-              className="text-sm opacity-70 hover:opacity-100 underline transition-opacity duration-200 bg-transparent border-none p-0 m-0"
+              className="text-sm opacity-70 hover:opacity-100 underline transition-opacity duration-fast bg-transparent border-none p-0 m-0 hover-lift"
+              style={{ color: 'var(--text-tertiary)' }}
             >
               {showRaw ? '👁️ 显示渲染' : '📝 显示原始'}
             </button>
           </div>
           {showRaw ? (
-            <pre className="whitespace-pre-wrap text-xs bg-gray-900/10 dark:bg-gray-100/10 p-3 rounded-xl font-mono">{mainContent}</pre>
+            <pre className="whitespace-pre-wrap text-xs p-3 rounded-lg font-mono transition-all duration-fast" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>{mainContent}</pre>
           ) : (
-            // 只对已完成的消息进行JSON检测和渲染
-            isStreamingComplete ? renderContentWithJSON(mainContent) : <div className="whitespace-pre-wrap leading-relaxed dark:text-gray-200">{mainContent}</div>
+            <>
+              {/* 渲染@引用标记 */}
+              {(atReferenceMatch || atCursorMatch || atDocumentMatch) && (
+                <div className="mb-3 p-3 rounded-lg" style={{
+                  backgroundColor: 'var(--accent-light)',
+                  border: '1px solid var(--accent-primary)',
+                  borderRadius: 'var(--radius-md)'
+                }}>
+                  {atReferenceMatch && atReferenceMatch.length > 0 && (
+                    <>
+                      <div className="text-xs font-semibold mb-2 flex items-center" style={{ color: 'var(--accent-primary)' }}>
+                        📋 选区引用
+                      </div>
+                      {atReferenceMatch.map((ref, i) => {
+                        const content = ref.replace('> [选区引用]', '').trim();
+                        // 截断过长的选区内容
+                        const displayContent = content.length > 200 ? content.substring(0, 200) + '...' : content;
+                        return (
+                          <div key={`selection-${i}`} className="text-xs p-2 rounded mt-1" style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            color: 'var(--text-primary)',
+                            fontFamily: 'var(--font-mono)',
+                            whiteSpace: 'pre-wrap'
+                          }}>
+                            {displayContent}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {atCursorMatch && atCursorMatch.length > 0 && (
+                    <>
+                      <div className="text-xs font-semibold mb-2 mt-3 flex items-center" style={{ color: 'var(--accent-primary)' }}>
+                        📍 光标位置上下文
+                      </div>
+                      {atCursorMatch.map((ref, i) => {
+                        const content = ref.replace('> [光标位置上下文]', '').trim();
+                        const displayContent = content.length > 200 ? content.substring(0, 200) + '...' : content;
+                        return (
+                          <div key={`cursor-${i}`} className="text-xs p-2 rounded mt-1" style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            color: 'var(--text-primary)',
+                            fontFamily: 'var(--font-mono)',
+                            whiteSpace: 'pre-wrap'
+                          }}>
+                            {displayContent}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {atDocumentMatch && atDocumentMatch.length > 0 && (
+                    <>
+                      <div className="text-xs font-semibold mb-2 mt-3 flex items-center" style={{ color: 'var(--accent-primary)' }}>
+                        📄 完整文档引用
+                      </div>
+                      {atDocumentMatch.map((ref, i) => {
+                        const content = ref.replace('> [完整文档]', '').trim();
+                        const displayContent = content.length > 200 ? content.substring(0, 200) + '...' : content;
+                        return (
+                          <div key={`document-${i}`} className="text-xs p-2 rounded mt-1" style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            color: 'var(--text-primary)',
+                            fontFamily: 'var(--font-mono)',
+                            whiteSpace: 'pre-wrap'
+                          }}>
+                            {displayContent}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* 只对已完成的消息进行JSON检测和渲染 */}
+              {isStreamingComplete ? renderContentWithJSON(mainContent) : <div className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-primary)' }}>{mainContent}</div>}
+            </>
           )}
           
           {/* 显示function call执行按钮 */}
           {functionCall && (
-            <div className="mt-4 pt-3 border-t border-white/20">
+            <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
               <button
                 onClick={() => executeFunctionCall(functionCall)}
                 disabled={executedOperations[message.id]}
-                className={`px-5 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 transform hover:scale-105 ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-fast hover-lift ${
                   executedOperations[message.id]
-                    ? 'bg-gray-400/20 text-gray-400 cursor-not-allowed backdrop-blur-sm' 
-                    : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:from-green-600 hover:to-emerald-600 hover:shadow-xl active:scale-95'
+                    ? 'cursor-not-allowed backdrop-blur-sm'
+                    : 'shadow-md hover:shadow-lg'
                 }`}
+                style={
+                  executedOperations[message.id]
+                    ? { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-tertiary)', border: '1px solid var(--border-color)' }
+                    : { background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none' }
+                }
               >
                 {executedOperations[message.id] ? '✅ 已执行' : '⚡ 执行操作'}
               </button>
-              <div className="mt-2 text-xs opacity-75">
-                <span className="font-medium">操作类型:</span> {functionCall.name}
+              <div className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>操作类型:</span> {functionCall.name}
               </div>
             </div>
           )}
@@ -326,11 +424,11 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
           {isStreaming && !isStreamingComplete && (
             <div className="flex items-center mt-3">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse delay-75"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full animate-pulse delay-150"></div>
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'linear-gradient(135deg, var(--ai-accent), var(--ai-hover))' }}></div>
+                <div className="w-2 h-2 rounded-full animate-pulse delay-75" style={{ background: 'linear-gradient(135deg, var(--ai-accent), var(--ai-hover))' }}></div>
+                <div className="w-2 h-2 rounded-full animate-pulse delay-150" style={{ background: 'linear-gradient(135deg, var(--ai-accent), var(--ai-hover))' }}></div>
               </div>
-              <span className="text-xs opacity-70 ml-3 animate-pulse">AI正在思考中...</span>
+              <span className="text-xs animate-pulse ml-3" style={{ color: 'var(--text-tertiary)' }}>AI正在思考中...</span>
             </div>
           )}
           
@@ -338,13 +436,13 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, onApplyResponse, req
           {message.role === 'user' && requestParams && (
             <div className="text-left mt-3">
               <details className="group">
-                <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100 transition-opacity duration-200 flex items-center">
-                  <span className="mr-1 group-open:rotate-90 transition-transform duration-200">▶</span>
+                <summary className="cursor-pointer text-xs font-medium opacity-80 hover:opacity-100 transition-opacity duration-fast flex items-center" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="mr-1 group-open:rotate-90 transition-transform duration-fast">▶</span>
                   🔧 显示请求参数
                 </summary>
-                <div className="mt-2 p-3 bg-gray-100/10 dark:bg-gray-800/20 rounded-xl backdrop-blur-sm">
+                <div className="mt-2 p-3 rounded-lg backdrop-blur-sm transition-all duration-fast" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
                   {showRequestParamsRaw ? (
-                    <pre className="whitespace-pre-wrap text-xs bg-gray-900/10 dark:bg-gray-100/10 p-3 rounded-xl font-mono">
+                    <pre className="whitespace-pre-wrap text-xs p-3 rounded-lg font-mono transition-all duration-fast" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
                       {JSON.stringify(requestParams, null, 2)}
                     </pre>
                   ) : (
