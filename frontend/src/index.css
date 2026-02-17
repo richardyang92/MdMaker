@@ -92,6 +92,37 @@
   --panel-padding: 24px;
   --editor-padding: 48px 64px;
   --message-spacing: 16px;
+
+  /* ========== CodeAct 风格变量 ========== */
+  /* CodeAct 颜色 */
+  --codeact-thought-bg: var(--ai-light);
+  --codeact-thought-border: var(--ai-accent);
+  --codeact-thought-text: var(--text-secondary);
+
+  --codeact-pending-bg: var(--bg-tertiary);
+  --codeact-pending-text: var(--text-tertiary);
+
+  --codeact-executing-bg: #fef3c7;
+  --codeact-executing-text: #d97706;
+  --codeact-executing-border: #fbbf24;
+
+  --codeact-success-bg: #d1fae5;
+  --codeact-success-text: #059669;
+  --codeact-success-border: #10b981;
+
+  --codeact-failed-bg: #fee2e2;
+  --codeact-failed-text: #dc2626;
+  --codeact-failed-border: #ef4444;
+
+  /* CodeAct 间距 */
+  --codeact-card-gap: 12px;
+  --codeact-card-radius: var(--radius-lg);
+  --codeact-timeline-width: 2px;
+
+  /* 对话框样式 */
+  --dialog-backdrop: rgba(0, 0, 0, 0.5);
+  --dialog-bg: var(--bg-primary);
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 /* ========== 深色主题 (Dark Theme) ========== */
@@ -328,6 +359,42 @@ code {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ========== 消息气泡动画 ========== */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expandContent {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Details 元素样式优化 */
+details > summary {
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] > *:not(summary) {
+  animation: expandContent var(--duration-fast) var(--ease-out);
 }
 
 /* ========== 工具类 ========== */
@@ -671,98 +738,6 @@ input::placeholder, textarea::placeholder {
   border-left: 2px solid var(--accent-primary);
 }
 
-/* ========== Monaco Editor 滚动条 ========== */
-/* 优化 Monaco Editor 的滚动条样式，使其与预览区域保持一致 */
-.monaco-editor *,
-.monaco-editor *::before,
-.monaco-editor *::after {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
-}
-
-/* WebKit 浏览器滚动条样式 */
-.monaco-editor::-webkit-scrollbar,
-.monaco-editor *::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
-}
-
-.monaco-editor::-webkit-scrollbar-track,
-.monaco-editor *::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-.monaco-editor::-webkit-scrollbar-thumb,
-.monaco-editor *::-webkit-scrollbar-thumb {
-  background: var(--border-color) !important;
-  border-radius: 4px !important;
-  transition: background var(--duration-fast) var(--ease-out) !important;
-}
-
-.monaco-editor::-webkit-scrollbar-thumb:hover,
-.monaco-editor *::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary) !important;
-}
-
-/* 深色主题下的 Monaco Editor 滚动条 */
-[data-theme="dark"] .monaco-editor::-webkit-scrollbar-thumb,
-[data-theme="dark"] .monaco-editor *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-[data-theme="dark"] .monaco-editor::-webkit-scrollbar-thumb:hover,
-[data-theme="dark"] .monaco-editor *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* 针对 Shadow DOM 的滚动条样式 */
-.monaco-editor .overflow-guard {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
-}
-
-.monaco-editor .overflow-guard::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
-}
-
-.monaco-editor .overflow-guard::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-.monaco-editor .overflow-guard::-webkit-scrollbar-thumb {
-  background: var(--border-color) !important;
-  border-radius: 4px !important;
-}
-
-.monaco-editor .overflow-guard::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary) !important;
-}
-
-/* 针对视图区域的滚动条 */
-.monaco-editor .view-lines {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
-}
-
-.monaco-editor .view-lines::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
-}
-
-.monaco-editor .view-lines::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-.monaco-editor .view-lines::-webkit-scrollbar-thumb {
-  background: var(--border-color) !important;
-  border-radius: 4px !important;
-}
-
-.monaco-editor .view-lines::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary) !important;
-}
-
 /* ========== Tree 组件样式 ========== */
 .tree-string {
   color: #10b981;
@@ -864,4 +839,127 @@ input:focus, textarea:focus {
   outline: none;
   border-color: var(--accent-primary) !important;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* ========== AI助手浮动按钮动画 ========== */
+@keyframes fabPulse {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 30px rgba(139, 92, 246, 0.6), 0 0 0 12px rgba(139, 92, 246, 0);
+  }
+}
+
+.ai-fab-pulse {
+  animation: fabPulse 2s ease-in-out infinite;
+}
+
+/* 深色主题下的FAB动画 */
+[data-theme="dark"] .ai-fab-pulse {
+  animation: fabPulse 2s ease-in-out infinite;
+}
+
+/* ========== CodeAct 动画 ========== */
+
+/* 思考卡片展开动画 */
+@keyframes thoughtExpand {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.animate-thought-expand {
+  animation: thoughtExpand 0.3s var(--ease-out);
+}
+
+/* 弹窗出现动画 */
+@keyframes dialogAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-dialog-appear {
+  animation: dialogAppear 0.2s var(--ease-out);
+}
+
+/* 思考卡片进入 */
+@keyframes thoughtSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-thought-enter {
+  animation: thoughtSlideIn 0.3s var(--ease-out);
+}
+
+/* 观察卡片进入 */
+@keyframes observationEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-observation-enter {
+  animation: observationEnter 0.3s var(--ease-out);
+}
+
+/* 执行中动画 */
+@keyframes executingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========== CodeAct 卡片通用样式 ========== */
+.codeact-card {
+  border-radius: var(--codeact-card-radius);
+  overflow: hidden;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.codeact-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* 时间线样式 */
+.codeact-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.codeact-timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: var(--codeact-timeline-width);
+  background: linear-gradient(
+    to bottom,
+    var(--ai-accent),
+    var(--border-color)
+  );
+  border-radius: var(--codeact-timeline-width);
 }

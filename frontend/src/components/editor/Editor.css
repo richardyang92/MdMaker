@@ -1,0 +1,104 @@
+.codemirror-editor-container {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.codemirror-editor-container .cm-editor {
+  height: 100%;
+}
+
+.codemirror-editor-container .cm-scroller {
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* 滚动条样式 */
+.codemirror-editor-container .cm-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.codemirror-editor-container .cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.codemirror-editor-container .cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--border-color, #d1d5db);
+  border-radius: 4px;
+}
+
+.codemirror-editor-container .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary, #9ca3af);
+}
+
+/* 滚动条交叉处理 */
+.codemirror-editor-container .cm-scroller::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Markdown 语法高亮增强 */
+.codemirror-editor-container .cm-header-1 {
+  font-size: 1.6em;
+  font-weight: 700;
+}
+
+.codemirror-editor-container .cm-header-2 {
+  font-size: 1.4em;
+  font-weight: 600;
+}
+
+.codemirror-editor-container .cm-header-3 {
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.codemirror-editor-container .cm-header-4,
+.codemirror-editor-container .cm-header-5,
+.codemirror-editor-container .cm-header-6 {
+  font-weight: 600;
+}
+
+.codemirror-editor-container .cm-strong {
+  font-weight: 700;
+}
+
+.codemirror-editor-container .cm-em {
+  font-style: italic;
+}
+
+.codemirror-editor-container .cm-link {
+  text-decoration: underline;
+}
+
+.codemirror-editor-container .cm-quote {
+  font-style: italic;
+  border-left: 3px solid var(--accent-primary, #3b82f6);
+  padding-left: 8px;
+}
+
+/* 代码块样式 */
+.codemirror-editor-container .cm-monospace {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* 选区样式 */
+.codemirror-editor-container .cm-selectionBackground {
+  /* 选中区域的透明度由主题文件控制，这里不再额外设置 */
+}
+
+/* 光标样式 */
+.codemirror-editor-container .cm-cursor {
+  border-left-width: 2px;
+}
+
+/* 行号样式 */
+.codemirror-editor-container .cm-gutters {
+  user-select: none;
+}
+
+.codemirror-editor-container .cm-lineNumbers .cm-gutterElement {
+  padding: 0 8px;
+  min-width: 32px;
+  text-align: right;
+}
