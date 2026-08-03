@@ -56,3 +56,24 @@ async def aiter_chunks(content: str, chunk_size: int = 10) -> AsyncGenerator[str
     """
     for i in range(0, len(content), chunk_size):
         yield content[i:i + chunk_size]
+
+
+async def create_agent_sse_stream(
+    event_generator: AsyncGenerator[dict, None],
+) -> AsyncGenerator[str, None]:
+    """SSE stream for arbitrary dict events (agent events).
+
+    Unlike create_sse_stream (which wraps strings into ChatChunk), this yields
+    each dict as-is: data: {json}\n\n. Always emits a terminal 'done' if the
+    generator didn't already.
+    """
+    saw_done = False
+    try:
+        async for event in event_generator:
+            yield format_sse_chunk(event)
+            if event.get("type") == "done":
+                saw_done = True
+    except Exception as e:  # noqa: BLE001
+        yield format_sse_chunk({"type": "error", "error": str(e)})
+    if not saw_done:
+        yield format_sse_chunk({"type": "done", "content": ""})

@@ -59,11 +59,12 @@ async def health_check():
 
 
 # Include API routers
-from app.api.v1 import ai, config, documents
+from app.api.v1 import agent, ai, config, documents
 
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(config.router, prefix="/api/v1/config", tags=["Config"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
+app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 
 
 @app.get("/")

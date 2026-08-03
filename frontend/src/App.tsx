@@ -20,6 +20,9 @@ import { QuickActions, QuickAction } from './components/ai-assistant/QuickAction
 import { loadConfigFromStorage, saveConfigToStorage } from './components/ai-assistant/SettingsPanel';
 import { aiApi } from './services/api/aiApi';
 import type { ChatContext, ProviderInfo } from './services/types/ai';
+import { useAgentChat } from './hooks/useAgentChat';
+import { AgentPanel } from './components/agent/AgentPanel';
+import { agentApi } from './services/api/agentApi';
 
 // 扩展消息接口，添加文档快照支持
 interface Message {
@@ -254,7 +257,27 @@ $$
     };
   });
 
+  const agentChat = useAgentChat();
+
+  const ensureAgentSession = async () => {
+    await agentChat.ensureSession(markdown, 'Untitled');
+  };
+
+  const handleAgentPatch = async (_version: number) => {
+    if (!agentChat.sessionId) return;
+    try {
+      const { content } = await agentApi.getDocument(agentChat.sessionId);
+      setMarkdownWithHistory(content);
+    } catch (e) {
+      console.error('failed to fetch authoritative document:', e);
+    }
+  };
+
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  // Agent panel defaults to collapsed: when expanded the fixed panel
+  // (z-[10000]) would otherwise cover the AI floating button + drawer (z-[9999]),
+  // hiding the provider/model settings tab. See App.tsx render section.
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
 
   // 对话管理：清空对话
@@ -1099,6 +1122,69 @@ $$
           </AIFloatingButton>
         </>
       )}
+        {/* Agent panel (new, coexists with legacy AI drawer during migration).
+            Collapsed by default: the fixed panel sits at z-[10000] which would
+            cover the AI floating button + drawer (z-[9999]) and hide the
+            provider/model settings tab, so it only renders when explicitly opened. */}
+        {showAgentPanel ? (
+          <div className="fixed bottom-24 right-4 z-[10000] h-[32rem] w-96 rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+              <span className="text-sm font-semibold">Agent</span>
+              <div className="flex items-center gap-2">
+                {!agentChat.sessionId && (
+                  <button
+                    onClick={ensureAgentSession}
+                    className="rounded bg-slate-200 px-2 py-1 text-xs dark:bg-slate-700 dark:text-slate-200"
+                  >
+                    建立会话
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAgentPanel(false)}
+                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                  title="收起 Agent"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="h-[calc(100%-2.5rem)]">
+              <AgentPanel
+                turns={agentChat.turns}
+                isRunning={agentChat.isRunning}
+                error={agentChat.error}
+                onSend={(msg) =>
+                  agentChat.sendMessage(msg, {
+                    provider: aiConfig.provider,
+                    model: aiConfig.model,
+                    selection: editorRef.current?.getSelection()?.text,
+                    onDocumentPatch: handleAgentPatch,
+                    getDocumentContent: () => markdown,
+                    setDocumentContent: setMarkdownWithHistory,
+                  })
+                }
+                onStop={agentChat.stop}
+              />
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAgentPanel(true)}
+            className="fixed bottom-6 left-6 z-[9999] flex items-center gap-1.5 rounded-full px-4 py-3 text-sm font-medium text-white shadow-lg transition-all duration-300 hover:shadow-xl hover-lift"
+            style={{
+              background: 'linear-gradient(135deg, var(--ai-accent), var(--ai-hover))',
+              boxShadow: '0 4px 20px rgba(139, 92, 246, 0.4)'
+            }}
+            title="打开 Agent 面板"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Agent
+          </button>
+        )}
     </div>
   );
 }

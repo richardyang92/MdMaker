@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from './config';
 /**
  * Parse Server-Sent Events stream
  */
-async function* parseSSEStream(
+export async function* parseSSEStream(
   response: Response,
 ): AsyncGenerator<ChatChunk, void, unknown> {
   const reader = response.body?.getReader();

@@ -16,4 +16,12 @@ export const API_ENDPOINTS = {
   // Document endpoints
   documents: () => `${API_BASE}/api/v1/documents`,
   document: (id: string) => `${API_BASE}/api/v1/documents/${id}`,
+
+  // Agent endpoints
+  agentSessions: () => `${API_BASE}/api/v1/agent/sessions`,
+  agentSession: (id: string) => `${API_BASE}/api/v1/agent/sessions/${id}`,
+  agentSessionMessages: (id: string) => `${API_BASE}/api/v1/agent/sessions/${id}/messages`,
+  agentSessionSync: (id: string) => `${API_BASE}/api/v1/agent/sessions/${id}/sync`,
+  agentSessionStop: (id: string) => `${API_BASE}/api/v1/agent/sessions/${id}/stop`,
+  agentSessionDocument: (id: string) => `${API_BASE}/api/v1/agent/sessions/${id}/document`,
 } as const;
