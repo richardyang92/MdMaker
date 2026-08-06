@@ -4,10 +4,12 @@ Thread-safe (asyncio.Lock) document state with optimistic versioning and
 an in-memory undo stack. Edit operations delegate to the pure functions in
 `tools.py`.
 """
+
 from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from typing import Callable
 
 from app.core.config import get_settings
 from app.services.workspace import tools
@@ -32,10 +34,26 @@ class Workspace:
     version: int = 0
     _history: list[Snapshot] = field(default_factory=list)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    # Change observers: invoked synchronously from _commit on every successful
+    # edit, receiving the new version. Used by AgentService to emit a
+    # document_patch per edit (reliable even under parallel tool calls).
+    _on_change: list[Callable[[int], None]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self._history:
             self._history.append(Snapshot(self.content, self.title, self.version))
+
+    def add_change_listener(self, cb: Callable[[int], None]) -> Callable[[], None]:
+        """Register a change observer. Returns a deregister function."""
+        self._on_change.append(cb)
+
+        def _remove() -> None:
+            try:
+                self._on_change.remove(cb)
+            except ValueError:
+                pass
+
+        return _remove
 
     def _commit(self, new_content: str, new_title: str | None = None) -> None:
         """Apply an edit: bump version, push snapshot. Caller holds the lock."""
@@ -47,6 +65,13 @@ class Workspace:
         # cap history at 50
         if len(self._history) > 50:
             self._history = self._history[-50:]
+        # Notify observers of the new version. Snapshot the list because a
+        # callback could (in theory) mutate it.
+        for cb in list(self._on_change):
+            try:
+                cb(self.version)
+            except Exception:  # noqa: BLE001 — observers must not break edits
+                pass
 
     def _check_deletion_ratio(self, old: str, new: str) -> None:
         """Reject edits that shrink the document by more than the configured ratio.

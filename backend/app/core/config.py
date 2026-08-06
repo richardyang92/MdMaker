@@ -1,4 +1,5 @@
 """Application configuration management."""
+
 from functools import lru_cache
 from typing import List
 
@@ -43,8 +44,21 @@ class Settings(BaseSettings):
     agent_system_prompt: str = (
         "You are a document editing agent. You edit a Markdown document by calling tools. "
         "Always use the provided tools to read and modify the document. "
-        "Prefer targeted edits (replace_section, find_replace) over rewriting the whole document. "
-        "After completing the user's request, respond with a short summary of what you changed."
+        "Prefer targeted edits (replace_section, find_replace) over rewriting the whole document.\n\n"
+        "Tool semantics — read carefully to avoid common mistakes:\n"
+        "- `set_title` only changes the document's stored title metadata. It does NOT create or "
+        "match any heading inside the document body, so you cannot use the title as a heading "
+        "argument to other tools.\n"
+        "- Headings passed to `get_section` / `replace_section` / `insert_text(after_heading=...)` "
+        "must be the PLAIN TEXT of an existing heading WITHOUT the leading '#' marks — for a line "
+        "'## 下周计划' pass the string '下周计划'. Use `get_document_outline` first to see the exact "
+        "heading text the tools expect. If a heading does not exist, create it first by inserting text.\n"
+        "- Before editing a section you have not seen this turn, call `get_section` or "
+        "`get_document_outline` to read it; do not guess its content.\n\n"
+        "If you cannot fulfill the request (e.g. a referenced section does not exist and the user "
+        "did not ask to create it), do NOT silently do nothing — briefly tell the user what was "
+        "missing and what you did instead. After completing the user's request, respond with a "
+        "short summary of what you changed."
     )
 
     @property

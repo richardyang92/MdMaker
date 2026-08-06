@@ -3,8 +3,10 @@
 No persistence — sessions live in a process-local dict. Restart loses state.
 This matches the design decision (内存会话状态, no DB).
 """
+
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass, field
 from typing import Literal, Optional
@@ -20,6 +22,10 @@ class AgentSession:
     workspace: Workspace
     status: SessionStatus = "idle"
     message_history: list = field(default_factory=list)
+    # Cancellation signal shared with the running AgentService. Set by
+    # `stop()` so the agent loop can terminate cooperatively instead of
+    # running to completion in the background.
+    stop_event: asyncio.Event = field(default_factory=asyncio.Event)
 
     @classmethod
     def create(cls, document: str = "", title: str = "Untitled") -> "AgentSession":
@@ -27,6 +33,10 @@ class AgentSession:
             session_id=str(uuid.uuid4()),
             workspace=Workspace(content=document, title=title),
         )
+
+    def stop(self) -> None:
+        """Signal the running agent (if any) to cancel as soon as possible."""
+        self.stop_event.set()
 
 
 class SessionManager:

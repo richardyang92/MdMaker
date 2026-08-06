@@ -7,6 +7,7 @@ export type AgentEventType =
   | 'tool_result'
   | 'document_patch'
   | 'final'
+  | 'stopped'
   | 'error'
   | 'done';
 
@@ -39,6 +40,11 @@ export interface FinalEvent {
   content: string;
 }
 
+export interface StoppedEvent {
+  type: 'stopped';
+  content: string;
+}
+
 export interface ErrorEvent {
   type: 'error';
   error: string;
@@ -55,6 +61,7 @@ export type AgentEvent =
   | ToolResultEvent
   | DocumentPatchEvent
   | FinalEvent
+  | StoppedEvent
   | ErrorEvent
   | DoneEvent;
 

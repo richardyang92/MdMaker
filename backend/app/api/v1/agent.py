@@ -1,4 +1,5 @@
 """Agent API routes — sessions, streaming messages, sync, stop."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -19,6 +20,22 @@ from app.services.streaming import create_agent_sse_stream
 
 router = APIRouter()
 _settings = get_settings()
+
+
+def _append_history(sess, user_message: str, assistant_text: str) -> None:
+    """Append this turn to message_history for multi-turn continuity.
+
+    We store a lightweight (user, assistant) ModelMessage pair rather than the
+    full tool-call transcript — enough context for the model to remember prior
+    turns while keeping memory bounded. Imported lazily so the module remains
+    importable if pydantic_ai's message API shifts.
+    """
+    if not assistant_text:
+        return
+    from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
+
+    sess.message_history.append(ModelRequest(parts=[UserPromptPart(content=user_message)]))
+    sess.message_history.append(ModelResponse(parts=[TextPart(content=assistant_text)]))
 
 
 def _provider_credentials(provider: str) -> tuple[str, str]:
@@ -68,6 +85,8 @@ async def send_message(session_id: str, req: SendMessageRequest) -> StreamingRes
         model=req.model,
         api_key=api_key,
         base_url=base_url,
+        # Share the session's stop event so /stop can interrupt this run.
+        stop_event=sess.stop_event,
     )
 
     # Build the user message with optional selection context
@@ -75,19 +94,32 @@ async def send_message(session_id: str, req: SendMessageRequest) -> StreamingRes
     if req.selection:
         user_message = f"{user_message}\n\n[Selected text context]\n```\n{req.selection}\n```"
 
+    # Reset the stop flag from any previous run on this session, then mark running.
+    sess.stop_event.clear()
     sess.status = "running"
 
     async def event_gen():
+        was_stopped = False
         try:
             async for evt in service.run(user_message, message_history=sess.message_history):
+                if evt.get("type") == "stopped":
+                    was_stopped = True
                 yield evt
+            # Persist this turn into history for multi-turn continuity.
+            # (Only when not cancelled, so we don't remember half-finished turns.)
+            if not was_stopped:
+                _append_history(sess, user_message, service.last_assistant_text)
         finally:
-            sess.status = "done"
+            sess.status = "stopped" if was_stopped else "done"
 
     return StreamingResponse(
         create_agent_sse_stream(event_gen()),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -111,12 +143,17 @@ async def sync_document(session_id: str, req: ClientSyncRequest) -> ClientSyncRe
 
 @router.post("/sessions/{session_id}/stop", response_model=StopResponse)
 async def stop_session(session_id: str) -> StopResponse:
-    """Mark a session as stopped (the streaming connection is closed client-side)."""
+    """Interrupt a running agent as soon as possible.
+
+    Sets the session's stop event so the running AgentService loop terminates
+    cooperatively at the next event boundary (rather than running to completion
+    in the background). The SSE stream then emits a `stopped` terminal event.
+    """
     mgr = get_session_manager()
     sess = mgr.get(session_id)
     if sess is None:
         raise HTTPException(status_code=404, detail="session not found")
-    sess.status = "stopped"
+    sess.stop()
     return StopResponse(stopped=True)
 
 

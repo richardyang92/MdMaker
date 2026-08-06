@@ -9,6 +9,8 @@ import type {
 // A grouped run of events shown as one assistant turn in the UI.
 export interface AgentTurn {
   id: string;
+  /** 该轮用户发送的指令文本，用于在活动流中渲染用户消息气泡。 */
+  userMessage: string;
   events: AgentEvent[];
   status: 'streaming' | 'done' | 'error';
 }
@@ -80,7 +82,7 @@ export function useAgentChat(): UseAgentChatReturn {
     setError(null);
 
     const turnId = `turn-${Date.now()}`;
-    setTurns((prev) => [...prev, { id: turnId, events: [], status: 'streaming' }]);
+    setTurns((prev) => [...prev, { id: turnId, userMessage: message, events: [], status: 'streaming' }]);
 
     try {
       const stream = agentApi.sendMessage(
@@ -95,9 +97,24 @@ export function useAgentChat(): UseAgentChatReturn {
       );
       for await (const evt of stream) {
         setTurns((prev) =>
-          prev.map((t) =>
-            t.id === turnId ? { ...t, events: [...t.events, evt] } : t,
-          ),
+          prev.map((t) => {
+            if (t.id !== turnId) return t;
+            const events = [...t.events, evt];
+            // Merge consecutive thought deltas into the previous thought event
+            // so the UI renders one growing thought bubble instead of N small
+            // ones. (Backend already coalesces into sentence-sized chunks, but
+            // multiple chunks in one turn should still display as one block.)
+            if (evt.type === 'thought' && events.length >= 2) {
+              const prevEvt = events[events.length - 2];
+              if (prevEvt.type === 'thought') {
+                events.splice(events.length - 2, 2, {
+                  type: 'thought',
+                  content: prevEvt.content + evt.content,
+                });
+              }
+            }
+            return { ...t, events };
+          }),
         );
         if (evt.type === 'document_patch') {
           setDocumentVersion(evt.version);
@@ -107,6 +124,10 @@ export function useAgentChat(): UseAgentChatReturn {
           setError(evt.error);
           setTurns((prev) =>
             prev.map((t) => (t.id === turnId ? { ...t, status: 'error' } : t)),
+          );
+        } else if (evt.type === 'stopped') {
+          setTurns((prev) =>
+            prev.map((t) => (t.id === turnId ? { ...t, status: 'done' } : t)),
           );
         }
       }
@@ -127,8 +148,19 @@ export function useAgentChat(): UseAgentChatReturn {
   }, [sessionId, documentVersion]);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    // Signal the backend to interrupt the agent run cooperatively, then abort
+    // the local SSE reader. The backend's `stopped` terminal event may not
+    // arrive before the abort, so we also append a local stopped marker to the
+    // active turn so the user always sees explicit stop feedback.
     if (sessionId) void agentApi.stop(sessionId);
+    abortRef.current?.abort();
+    setTurns((prev) =>
+      prev.map((t, i) =>
+        i === prev.length - 1 && t.status === 'streaming'
+          ? { ...t, status: 'done', events: [...t.events, { type: 'stopped', content: '' }] }
+          : t,
+      ),
+    );
     setIsRunning(false);
   }, [sessionId]);
 
