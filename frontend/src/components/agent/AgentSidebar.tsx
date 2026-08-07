@@ -5,12 +5,16 @@ import type { UseAgentChatReturn } from '../../hooks/useAgentChat';
 interface AgentSidebarProps {
   /** 来自 useAgentChat 的聚合状态与动作。 */
   agentChat: UseAgentChatReturn;
-  /** 向 Agent 发送一条指令。 */
-  onSend: (message: string) => void;
+  /** 向 Agent 发送一条指令；可选 selection 为附带的文档选区上下文。 */
+  onSend: (message: string, selection?: string) => void;
   /** 建立会话（sessionId 为空时点击触发）。 */
   onEnsureSession: () => void;
   /** 收起右栏。 */
   onCollapse: () => void;
+  /** 附加到下一次发送的文档选区上下文（来自文档选区「加入上下文」）。 */
+  attachedContext?: string | null;
+  /** 清除已附加的上下文。 */
+  onClearContext?: () => void;
 }
 
 /**
@@ -24,6 +28,8 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
   onSend,
   onEnsureSession,
   onCollapse,
+  attachedContext,
+  onClearContext,
 }) => {
   return (
     <div
@@ -73,6 +79,8 @@ export const AgentSidebar: React.FC<AgentSidebarProps> = ({
           error={agentChat.error}
           onSend={onSend}
           onStop={agentChat.stop}
+          attachedContext={attachedContext}
+          onClearContext={onClearContext}
         />
       </div>
     </div>

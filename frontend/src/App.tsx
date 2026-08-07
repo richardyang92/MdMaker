@@ -82,6 +82,9 @@ function App() {
   // 文档内容（渲染稿的唯一数据源；直接编辑已移除，修改通过 Agent 完成）
   const [markdown, setMarkdown] = useState(INITIAL_DOCUMENT);
 
+  // 用户从文档中「加入上下文」的选区文本，随下一次发送一并发给 Agent，发送后清空。
+  const [attachedContext, setAttachedContext] = useState<string | null>(null);
+
   const [aiConfig, setAiConfig] = useState(() => {
     const savedConfig = loadConfigFromStorage();
     if (savedConfig && savedConfig.provider) {
@@ -121,16 +124,18 @@ function App() {
     }
   };
 
-  const handleSendToAgent = (message: string) => {
+  const handleSendToAgent = (message: string, selection?: string) => {
     void agentChat.sendMessage(message, {
       provider: aiConfig.provider,
       model: aiConfig.model,
-      // 直接编辑已移除，不再有选区概念。
-      selection: undefined,
+      // 用户从文档选区「加入上下文」的文本；未选则为 undefined，后端原样透传。
+      selection,
       onDocumentPatch: handleAgentPatch,
       getDocumentContent: () => markdown,
       setDocumentContent: setMarkdown,
     });
+    // 上下文是一次性的：随本次消息发送后即清空。
+    setAttachedContext(null);
   };
 
   // 处理AI配置变化（配置弹窗使用）
@@ -206,7 +211,7 @@ function App() {
         >
           {/* 左栏：渲染后的文档 */}
           <div className="relative h-full overflow-hidden">
-            <DocumentView content={markdown} />
+            <DocumentView content={markdown} onAddContext={(text) => setAttachedContext(text)} />
             {!showAgentPanel && (
               <button
                 onClick={() => setShowAgentPanel(true)}
@@ -233,6 +238,8 @@ function App() {
               onSend={handleSendToAgent}
               onEnsureSession={ensureAgentSession}
               onCollapse={() => setShowAgentPanel(false)}
+              attachedContext={attachedContext}
+              onClearContext={() => setAttachedContext(null)}
             />
           )}
         </div>

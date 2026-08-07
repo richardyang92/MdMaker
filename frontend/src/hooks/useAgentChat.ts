@@ -11,6 +11,11 @@ export interface AgentTurn {
   id: string;
   /** 该轮用户发送的指令文本，用于在活动流中渲染用户消息气泡。 */
   userMessage: string;
+  /**
+   * 该轮附带的文档选区上下文（用户从渲染稿「加入上下文」的文本）。
+   * 仅用于在历史气泡下回显一个只读标签；未附带时为 undefined。
+   */
+  selection?: string;
   events: AgentEvent[];
   status: 'streaming' | 'done' | 'error';
 }
@@ -82,7 +87,16 @@ export function useAgentChat(): UseAgentChatReturn {
     setError(null);
 
     const turnId = `turn-${Date.now()}`;
-    setTurns((prev) => [...prev, { id: turnId, userMessage: message, events: [], status: 'streaming' }]);
+    setTurns((prev) => [
+      ...prev,
+      {
+        id: turnId,
+        userMessage: message,
+        selection: opts.selection,
+        events: [],
+        status: 'streaming',
+      },
+    ]);
 
     try {
       const stream = agentApi.sendMessage(

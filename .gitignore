@@ -180,3 +180,6 @@ vite.config.ts.timestamp-*
 
 # ZCode agent local metadata
 .zcode/
+
+# GUI test evidence screenshots (local only)
+gui-test-screenshots/

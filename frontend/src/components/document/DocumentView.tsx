@@ -4,6 +4,11 @@ import { MarkdownPreview } from './MarkdownPreview';
 interface DocumentViewProps {
   /** 待渲染的 Markdown 源文本。 */
   content: string;
+  /**
+   * 用户在渲染稿中选中文字并点击「加入上下文」后触发。
+   * 传入则启用选区加入上下文交互；不传则纯展示。
+   */
+  onAddContext?: (text: string) => void;
 }
 
 /**
@@ -13,7 +18,7 @@ interface DocumentViewProps {
  * 取代了原"编辑器 + 预览"双栏中的两个区域——现在文档以渲染形态呈现，
  * 文本修改统一通过右栏 Agent 完成。
  */
-export const DocumentView: React.FC<DocumentViewProps> = ({ content }) => {
+export const DocumentView: React.FC<DocumentViewProps> = ({ content, onAddContext }) => {
   return (
     <div
       className="h-full flex flex-col overflow-hidden"
@@ -36,7 +41,7 @@ export const DocumentView: React.FC<DocumentViewProps> = ({ content }) => {
           文档
         </h2>
       </div>
-      <MarkdownPreview content={content} />
+      <MarkdownPreview content={content} onAddContext={onAddContext} />
     </div>
   );
 };
