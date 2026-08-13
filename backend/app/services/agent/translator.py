@@ -24,6 +24,7 @@ WRITE_TOOLS: frozenset[str] = frozenset(
         "replace_range",
         "delete_range",
         "find_replace",
+        "replace_document",
         "set_title",
     }
 )

@@ -3,6 +3,7 @@ import { agentApi } from '../services/api/agentApi';
 import { DocumentSync } from '../lib/documentSync';
 import type {
   AgentEvent,
+  ContextItem,
   CreateSessionResponse,
 } from '../services/types/agent';
 
@@ -12,10 +13,10 @@ export interface AgentTurn {
   /** 该轮用户发送的指令文本，用于在活动流中渲染用户消息气泡。 */
   userMessage: string;
   /**
-   * 该轮附带的文档选区上下文（用户从渲染稿「加入上下文」的文本）。
-   * 仅用于在历史气泡下回显一个只读标签；未附带时为 undefined。
+   * 该轮附带的文档上下文片段（用户从渲染稿「加入上下文」的原始 Markdown）。
+   * 仅用于在历史气泡下回显只读标签；未附带时为 undefined。
    */
-  selection?: string;
+  contexts?: ContextItem[];
   events: AgentEvent[];
   status: 'streaming' | 'done' | 'error';
 }
@@ -35,9 +36,14 @@ export interface UseAgentChatReturn {
 export interface SendMessageOpts {
   provider: string;
   model: string;
-  selection?: string;
-  /** Called when the agent emits a document_patch — editor applies new content. */
-  onDocumentPatch: (version: number) => void;
+  /** Attached context snippets; the backend expands `@<ref>` mentions. */
+  contexts?: ContextItem[];
+  /**
+   * Called when the agent emits a document_patch — editor applies new content.
+   * Receives the resolved session id so the editor can fetch the authoritative
+   * document even on the very first send (where the session was auto-created).
+   */
+  onDocumentPatch: (version: number, sessionId: string) => void;
   /** Read current document content (for sync). */
   getDocumentContent: () => string;
   /** Apply authoritative content (full replace). */
@@ -69,14 +75,32 @@ export function useAgentChat(): UseAgentChatReturn {
   }, [sessionId]);
 
   const sendMessage = useCallback(async (message: string, opts: SendMessageOpts) => {
-    if (!sessionId) {
-      setError('no session');
-      return;
+    // Auto-create a session on first send so the user never has to click
+    // "建立会话" before their first message. The resolved id is held in a local
+    // so the rest of this call uses it immediately, independent of when React
+    // commits the state update.
+    let sid = sessionId;
+    let version = documentVersion;
+    if (!sid) {
+      try {
+        const resp = await agentApi.createSession({
+          document: opts.getDocumentContent(),
+          title: 'Untitled',
+        });
+        sid = resp.session_id;
+        version = resp.version;
+        sessionRespRef.current = resp;
+        setSessionId(sid);
+        setDocumentVersion(version);
+      } catch (e) {
+        setError((e as Error).message);
+        return;
+      }
     }
     // Wire sync to live getters
     syncRef.current = new DocumentSync({
-      sessionId,
-      initialVersion: documentVersion,
+      sessionId: sid,
+      initialVersion: version,
       getContent: opts.getDocumentContent,
       setContent: opts.setDocumentContent,
     });
@@ -92,7 +116,7 @@ export function useAgentChat(): UseAgentChatReturn {
       {
         id: turnId,
         userMessage: message,
-        selection: opts.selection,
+        contexts: opts.contexts,
         events: [],
         status: 'streaming',
       },
@@ -100,12 +124,12 @@ export function useAgentChat(): UseAgentChatReturn {
 
     try {
       const stream = agentApi.sendMessage(
-        sessionId,
+        sid,
         {
           message,
           provider: opts.provider,
           model: opts.model,
-          selection: opts.selection,
+          contexts: opts.contexts,
         },
         controller.signal,
       );
@@ -132,8 +156,9 @@ export function useAgentChat(): UseAgentChatReturn {
         );
         if (evt.type === 'document_patch') {
           setDocumentVersion(evt.version);
-          // Notify editor to fetch + apply authoritative content
-          opts.onDocumentPatch(evt.version);
+          // Notify editor to fetch + apply authoritative content. Pass the
+          // resolved sid so the editor works even right after auto-create.
+          opts.onDocumentPatch(evt.version, sid);
         } else if (evt.type === 'error') {
           setError(evt.error);
           setTurns((prev) =>

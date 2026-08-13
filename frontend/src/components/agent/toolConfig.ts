@@ -14,6 +14,7 @@ const TOOL_CONFIG: Record<string, ToolDisplay> = {
   get_document_outline: { icon: '📋', label: '文档大纲' },
   insert_text: { icon: '✏️', label: '插入文本' },
   replace_section: { icon: '🔄', label: '替换章节' },
+  replace_document: { icon: '📝', label: '写入全文' },
   replace_range: { icon: '🔄', label: '替换片段' },
   delete_range: { icon: '🗑️', label: '删除片段' },
   find_replace: { icon: '🔁', label: '批量替换' },

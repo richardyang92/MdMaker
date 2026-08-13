@@ -40,7 +40,15 @@ def test_workspace_tools_are_registered(workspace):
     tools_dict = getattr(toolset, "tools", None)
     assert tools_dict is not None, "expected .tools dict on function toolset"
     registered = set(tools_dict.keys())
-    expected = {"get_document_outline", "get_section", "insert_text", "replace_section", "find_replace", "set_title"}
+    expected = {
+        "get_document_outline",
+        "get_section",
+        "insert_text",
+        "replace_section",
+        "replace_document",
+        "find_replace",
+        "set_title",
+    }
     assert expected.issubset(registered), f"missing tools: {expected - registered}"
 
 

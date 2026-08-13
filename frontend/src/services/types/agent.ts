@@ -77,12 +77,24 @@ export interface CreateSessionResponse {
   title: string;
 }
 
+/** A document snippet attached to the chat and referenced via `@<ref>`. */
+export interface ContextItem {
+  /** Reference token used in the message as `@<ref>` (e.g. "ctx-1"). */
+  ref: string;
+  /** Short human-readable label shown in chips and the mention list. */
+  label: string;
+  /** Raw Markdown content of the snippet. */
+  content: string;
+}
+
 export interface SendMessageRequest {
   message: string;
   provider: string;
   model: string;
   selection?: string;
   cursor_position?: number;
+  /** Named context snippets; the backend expands `@<ref>` mentions. */
+  contexts?: ContextItem[];
 }
 
 export interface ClientSyncRequest {

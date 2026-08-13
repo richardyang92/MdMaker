@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -9,6 +11,7 @@ from app.core.config import get_settings
 from app.schemas.agent import (
     ClientSyncRequest,
     ClientSyncResponse,
+    ContextItem,
     CreateSessionRequest,
     CreateSessionResponse,
     SendMessageRequest,
@@ -20,6 +23,70 @@ from app.services.streaming import create_agent_sse_stream
 
 router = APIRouter()
 _settings = get_settings()
+
+
+def _safe_fence(content: str) -> str:
+    """Return a backtick fence at least one tick longer than any run in content.
+
+    Snippet content is itself Markdown and may contain fenced code blocks;
+    a fixed ``` wrapper would close early on such content. Use a fence that
+    cannot collide with anything inside.
+    """
+    longest = max((len(m.group(0)) for m in re.finditer(r"`+", content)), default=0)
+    return "`" * max(3, longest + 1)
+
+
+def _context_block(ref: str, label: str, content: str) -> str:
+    """Render one context snippet as a labeled fenced Markdown block."""
+    header = f"[上下文 @{ref} · {label}]" if label else f"[上下文 @{ref}]"
+    fence = _safe_fence(content)
+    return f"{header}\n{fence}\n{content}\n{fence}"
+
+
+def expand_context_references(
+    message: str,
+    contexts: list[ContextItem] | None,
+    document: str,
+) -> tuple[str, list[ContextItem]]:
+    """Expand ``@<ref>`` mentions in ``message`` into fenced Markdown blocks.
+
+    - Each ``@<ref>`` occurrence (matching an attached context) is replaced by a
+      labeled fenced block containing that snippet's raw Markdown.
+    - ``@document`` is replaced by the full current document.
+    - Attached contexts that are *not* referenced anywhere in the message are
+      appended after it, preserving the legacy behavior where adding a snippet
+      without mentioning it still sends it.
+
+    When ``contexts`` is ``None`` (legacy clients), the message is returned
+    unchanged. An explicitly empty list still expands ``@document``.
+
+    Returns the expanded message and the list of contexts that were referenced
+    inline (so callers can distinguish appended vs. inline usage).
+    """
+    if contexts is None:
+        return message, []
+
+    referenced: list[ContextItem] = []
+    for item in contexts:
+        pattern = rf"(?<![\w@-])@{re.escape(item.ref)}\b"
+        if re.search(pattern, message):
+            message = re.sub(
+                pattern, lambda _m: _context_block(item.ref, item.label, item.content), message
+            )
+            referenced.append(item)
+
+    message = re.sub(
+        r"(?<![\w@-])@document\b",
+        lambda _m: _context_block("document", "文档全文", document),
+        message,
+    )
+
+    unreferenced = [c for c in contexts if all(r.ref != c.ref for r in referenced)]
+    if unreferenced:
+        appended = "\n\n".join(_context_block(c.ref, c.label, c.content) for c in unreferenced)
+        message = f"{message}\n\n{appended}"
+
+    return message, referenced
 
 
 def _append_history(sess, user_message: str, assistant_text: str) -> None:
@@ -89,9 +156,14 @@ async def send_message(session_id: str, req: SendMessageRequest) -> StreamingRes
         stop_event=sess.stop_event,
     )
 
-    # Build the user message with optional selection context
+    # Build the user message: expand @<ref> mentions and @document, append any
+    # unreferenced attached contexts (legacy selection kept for compatibility).
     user_message = req.message
-    if req.selection:
+    if req.contexts is not None:
+        user_message, _referenced = expand_context_references(
+            req.message, req.contexts, sess.workspace.content
+        )
+    elif req.selection:
         user_message = f"{user_message}\n\n[Selected text context]\n```\n{req.selection}\n```"
 
     # Reset the stop flag from any previous run on this session, then mark running.

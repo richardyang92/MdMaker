@@ -101,6 +101,28 @@ async def test_deletion_ratio_rejects_massive_delete():
 
 
 @pytest.mark.asyncio
+async def test_replace_document_replaces_whole_body(ws):
+    v0 = ws.version
+    article = "# 塞曼效应\n\n正文内容……\n"
+    await ws.replace_document(article)
+    assert ws.content == article
+    assert ws.version == v0 + 1
+
+
+@pytest.mark.asyncio
+async def test_replace_document_not_blocked_by_deletion_ratio():
+    """replace_document is an explicit full overwrite: it must succeed even when
+    the new content is far shorter than the old (the deletion-ratio guard, which
+    protects against accidental mass-deletes in the range/section tools, must NOT
+    apply here — this is the exact path for 'generate a new article from scratch').
+    """
+    big = Workspace(content="x" * 1000)
+    short = "# 新文章\n\n短内容\n"
+    await big.replace_document(short)
+    assert big.content == short
+
+
+@pytest.mark.asyncio
 async def test_undo_restores_previous_state(ws):
     original = ws.content
     await ws.insert_text("TEMP")

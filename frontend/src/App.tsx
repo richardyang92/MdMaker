@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './index.css';
 import 'katex/dist/katex.min.css';
 import { loadConfigFromStorage, saveConfigToStorage } from './components/ai-assistant/SettingsPanel';
 import { ConfigModal } from './components/ai-assistant/ConfigModal';
 import { aiApi } from './services/api/aiApi';
 import type { ProviderInfo } from './services/types/ai';
+import type { ContextItem } from './services/types/agent';
 import { useAgentChat } from './hooks/useAgentChat';
 import { agentApi } from './services/api/agentApi';
 import { AppHeader, type Theme } from './components/layout/AppHeader';
@@ -72,6 +73,20 @@ $$
 
 开始编写你的markdown...`;
 
+/**
+ * Derive a short human label for a context snippet from its raw Markdown:
+ * first non-empty line, `#` markers stripped, truncated.
+ */
+function deriveContextLabel(text: string, fallback: string): string {
+  const firstLine = text
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
+  if (!firstLine) return fallback;
+  const cleaned = firstLine.replace(/^#+\s*/, '').trim() || firstLine;
+  return cleaned.length > 24 ? `${cleaned.slice(0, 24)}…` : cleaned;
+}
+
 function App() {
   // 主题状态
   const [theme, setTheme] = useState<Theme>('light');
@@ -82,8 +97,24 @@ function App() {
   // 文档内容（渲染稿的唯一数据源；直接编辑已移除，修改通过 Agent 完成）
   const [markdown, setMarkdown] = useState(INITIAL_DOCUMENT);
 
-  // 用户从文档中「加入上下文」的选区文本，随下一次发送一并发给 Agent，发送后清空。
-  const [attachedContext, setAttachedContext] = useState<string | null>(null);
+  // 用户从文档中「加入上下文」的片段集合（原始 Markdown）。每个片段带一个
+  // 引用名（@ctx-N），可多个并存；发送后在聊天框里通过 @ctx-N 引用，
+  // 未被引用的片段也会随消息附上（等价于旧的单选区行为）。可手动移除。
+  const [attachedContexts, setAttachedContexts] = useState<ContextItem[]>([]);
+  const contextCounter = useRef(0);
+
+  const handleAddContext = useCallback((text: string) => {
+    contextCounter.current += 1;
+    const ref = `ctx-${contextCounter.current}`;
+    setAttachedContexts((prev) => [
+      ...prev,
+      { ref, label: deriveContextLabel(text, `选区 ${contextCounter.current}`), content: text },
+    ]);
+  }, []);
+
+  const handleClearContext = useCallback((ref: string) => {
+    setAttachedContexts((prev) => prev.filter((c) => c.ref !== ref));
+  }, []);
 
   const [aiConfig, setAiConfig] = useState(() => {
     const savedConfig = loadConfigFromStorage();
@@ -114,28 +145,29 @@ function App() {
   };
 
   // Agent 产出 document_patch 后，从后端拉取权威内容并写回本地状态。
-  const handleAgentPatch = async (_version: number) => {
-    if (!agentChat.sessionId) return;
+  // 接收 sendMessage 内解析出的 sessionId，保证自动建会话后首条补丁也能生效。
+  const handleAgentPatch = async (_version: number, sessionId: string) => {
+    if (!sessionId) return;
     try {
-      const { content } = await agentApi.getDocument(agentChat.sessionId);
+      const { content } = await agentApi.getDocument(sessionId);
       setMarkdown(content);
     } catch (e) {
       console.error('failed to fetch authoritative document:', e);
     }
   };
 
-  const handleSendToAgent = (message: string, selection?: string) => {
+  const handleSendToAgent = (message: string) => {
     void agentChat.sendMessage(message, {
       provider: aiConfig.provider,
       model: aiConfig.model,
-      // 用户从文档选区「加入上下文」的文本；未选则为 undefined，后端原样透传。
-      selection,
+      // 已附加的上下文片段（原始 Markdown）；后端会展开消息中的 @ctx-N 引用，
+      // 未被引用的片段也会一并附上。片段保留在侧栏，可手动移除。
+      // 始终显式发送（可为空数组），这样内建 @document 引用也能被展开。
+      contexts: attachedContexts,
       onDocumentPatch: handleAgentPatch,
       getDocumentContent: () => markdown,
       setDocumentContent: setMarkdown,
     });
-    // 上下文是一次性的：随本次消息发送后即清空。
-    setAttachedContext(null);
   };
 
   // 处理AI配置变化（配置弹窗使用）
@@ -211,7 +243,7 @@ function App() {
         >
           {/* 左栏：渲染后的文档 */}
           <div className="relative h-full overflow-hidden">
-            <DocumentView content={markdown} onAddContext={(text) => setAttachedContext(text)} />
+            <DocumentView content={markdown} onAddContext={handleAddContext} />
             {!showAgentPanel && (
               <button
                 onClick={() => setShowAgentPanel(true)}
@@ -238,8 +270,8 @@ function App() {
               onSend={handleSendToAgent}
               onEnsureSession={ensureAgentSession}
               onCollapse={() => setShowAgentPanel(false)}
-              attachedContext={attachedContext}
-              onClearContext={() => setAttachedContext(null)}
+              attachedContexts={attachedContexts}
+              onClearContext={handleClearContext}
             />
           )}
         </div>

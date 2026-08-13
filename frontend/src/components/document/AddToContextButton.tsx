@@ -48,7 +48,7 @@ export const AddToContextButton: React.FC<AddToContextButtonProps> = ({
         borderRadius: 'var(--radius-md)',
         whiteSpace: 'nowrap',
       }}
-      title="将选中文本作为聊天上下文"
+      title="将选中范围对应的 Markdown 源文本加入聊天上下文"
     >
       ＋ 加入上下文 · {text.length}字
     </button>

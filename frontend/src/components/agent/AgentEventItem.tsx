@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { AgentEvent } from '../../services/types/agent';
 import { getToolDisplay } from './toolConfig';
+import { renderChatMarkdown } from '../../lib/chatMarkdown';
 
 interface AgentEventItemProps {
   event: AgentEvent;
@@ -9,6 +10,11 @@ interface AgentEventItemProps {
 /** 渲染单个 agent 事件为一行（活动流风格，CSS 变量配色，支持三主题）。 */
 export const AgentEventItem: React.FC<AgentEventItemProps> = ({ event }) => {
   const [thoughtOpen, setThoughtOpen] = useState(false);
+  // final 事件内容按 Markdown 渲染（模型输出的总结/回复）。
+  const finalHtml = useMemo(
+    () => (event.type === 'final' ? renderChatMarkdown(event.content) : ''),
+    [event],
+  );
 
   switch (event.type) {
     case 'thought':
@@ -46,6 +52,10 @@ export const AgentEventItem: React.FC<AgentEventItemProps> = ({ event }) => {
       // 工具结果：单行紧凑，图标 + 工具名 + 状态
       return <ToolResultRow event={event} />;
 
+    case 'tool_call':
+      // 工具调用：单行紧凑，图标 + 工具中文名，让用户看到 Agent 正在做什么。
+      return <ToolCallRow event={event} />;
+
     case 'document_patch':
       // 文档更新：琥珀色高亮单行
       return (
@@ -60,14 +70,13 @@ export const AgentEventItem: React.FC<AgentEventItemProps> = ({ event }) => {
       );
 
     case 'final':
-      // 总结：加粗突出，作为 turn 的收尾
+      // 总结：作为 turn 的收尾，按 Markdown 渲染（标题/列表/代码/公式/表格等）
       return (
         <div
-          className="mt-1 rounded-md px-2 py-1.5 text-xs font-medium"
+          className="mt-1 rounded-md px-2.5 py-1.5 text-xs chat-markdown"
           style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-tertiary)' }}
-        >
-          {event.content}
-        </div>
+          dangerouslySetInnerHTML={{ __html: finalHtml }}
+        />
       );
 
     case 'stopped':
@@ -95,6 +104,30 @@ export const AgentEventItem: React.FC<AgentEventItemProps> = ({ event }) => {
     default:
       return null;
   }
+};
+
+/** 工具调用行：图标 + 工具中文名 + 参数摘要，单行紧凑。 */
+const ToolCallRow: React.FC<{ event: { type: 'tool_call'; name: string; args: Record<string, unknown> } }> = ({ event }) => {
+  const display = getToolDisplay(event.name);
+  // 把参数拼成简短摘要（如 replace_document 会带很长的 text，截断即可）。
+  const argSummary = Object.entries(event.args)
+    .filter(([k]) => k !== 'text') // 写全文类工具的 text 太长，跳过
+    .map(([k, v]) => `${k}=${typeof v === 'string' ? `"${v.slice(0, 24)}"` : String(v)}`)
+    .join(', ');
+  return (
+    <div
+      className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs"
+      style={{ color: 'var(--text-tertiary)' }}
+    >
+      <span>{display.icon}</span>
+      <span style={{ color: 'var(--text-secondary)' }}>{display.label}</span>
+      {argSummary && (
+        <span className="truncate" style={{ color: 'var(--text-tertiary)' }}>
+          {argSummary}
+        </span>
+      )}
+    </div>
+  );
 };
 
 /** 工具结果行：图标 + 工具中文名 + ✓/✗ + 结果摘要，单行紧凑。 */

@@ -583,6 +583,133 @@ details[open] > *:not(summary) {
   margin: var(--space-6) 0;
 }
 
+/* ========== 对话消息 Markdown 样式 ========== */
+/* Agent 对话中 final 答案等 Markdown 内容的紧凑排版（气泡基于 12px 字号）。 */
+.chat-markdown {
+  line-height: var(--leading-normal);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.chat-markdown > :first-child { margin-top: 0; }
+.chat-markdown > :last-child { margin-bottom: 0; }
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4,
+.chat-markdown h5,
+.chat-markdown h6 {
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+  margin: 0.6em 0 0.3em;
+}
+
+.chat-markdown h1 { font-size: 1.05em; }
+.chat-markdown h2 { font-size: 1em; }
+.chat-markdown h3 { font-size: 0.95em; }
+.chat-markdown h4,
+.chat-markdown h5,
+.chat-markdown h6 { font-size: 0.9em; }
+
+.chat-markdown p { margin: 0.4em 0; }
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+}
+
+.chat-markdown ul { list-style-type: disc; }
+.chat-markdown ol { list-style-type: decimal; }
+.chat-markdown li { margin: 0.15em 0; }
+.chat-markdown li > p { margin: 0; }
+
+.chat-markdown a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.chat-markdown a:hover { color: var(--accent-hover); }
+
+.chat-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0 0.3em;
+  color: var(--accent-primary);
+}
+
+.chat-markdown pre {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+
+.chat-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.8125em;
+}
+
+.chat-markdown blockquote {
+  margin: 0.5em 0;
+  padding: 0.25em 0 0.25em 0.75em;
+  border-left: 3px solid var(--accent-primary);
+  color: var(--text-secondary);
+}
+
+.chat-markdown table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  font-size: 0.95em;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  border: 1px solid var(--border-color);
+  padding: 0.3em 0.5em;
+  text-align: left;
+}
+
+.chat-markdown th {
+  background-color: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.chat-markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: 0.4em 0;
+}
+
+.chat-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 0.6em 0;
+}
+
+.chat-markdown input[type='checkbox'] {
+  margin-right: 0.4em;
+  vertical-align: middle;
+}
+
+.chat-markdown .katex { font-size: 1.05em; }
+.chat-markdown .katex-display { margin: 0.5em 0; }
+
 /* ========== KaTeX 公式样式 ========== */
 .katex {
   font-size: 1.1em;

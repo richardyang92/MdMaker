@@ -89,3 +89,14 @@ def replace_section(content: str, heading: str, text: str) -> tuple[str, int, in
             new = content[: s.char_start] + text + content[s.char_end :]
             return new, s.char_start, s.char_start + len(text)
     raise ValueError(f"heading not found: {heading!r}")
+
+
+def replace_document(content: str, text: str) -> tuple[str, int, int]:
+    """Replace the ENTIRE document body with `text`.
+
+    Unlike the section/range tools, this is an explicit full-document overwrite —
+    the natural operation for "create a new article from scratch" — so the
+    deletion-ratio guard does NOT apply at the Workspace layer. Returns
+    (new_content, 0, len(text)) to match the (new, start, end) convention.
+    """
+    return text, 0, len(text)

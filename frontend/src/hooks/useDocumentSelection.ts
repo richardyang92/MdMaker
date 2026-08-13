@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getSelectionWithin } from '../lib/selection';
+import { getSelectionRangeWithin } from '../lib/selection';
 
 export interface UseDocumentSelectionReturn {
-  /** Currently highlighted text inside the container, or null when none. */
+  /** Currently selected text inside the container (source-resolved when a
+   * resolver is provided), or null when none. */
   pendingSelection: string | null;
   /** Drop the current pending selection (does not touch the DOM selection). */
   clear: () => void;
@@ -12,25 +13,33 @@ export interface UseDocumentSelectionReturn {
  * Track the user's text selection *inside* a single container element.
  *
  * Listens to the document-level `selectionchange` event (browsers don't bubble
- * it per-element) and filters via {@link getSelectionWithin} so only selections
- * fully contained in `containerRef.current` surface as `pendingSelection`.
+ * it per-element) and filters via {@link getSelectionRangeWithin} so only
+ * selections fully contained in `containerRef.current` surface as
+ * `pendingSelection`.
  *
- * Designed for the read-only rendered document preview: highlight a paragraph →
- * `pendingSelection` updates → the caller shows an "Add to context" affordance.
+ * When `resolve` is provided it maps the DOM Range back to the original
+ * Markdown source (see `lib/markdownSourceMap`), so the pending selection
+ * carries raw source syntax; otherwise it falls back to the rendered text.
  */
 export function useDocumentSelection(
   containerRef: React.RefObject<HTMLElement>,
+  resolve?: (range: Range) => string,
 ): UseDocumentSelectionReturn {
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
 
   useEffect(() => {
     const handleSelectionChange = () => {
-      const text = getSelectionWithin(containerRef.current);
+      const range = getSelectionRangeWithin(containerRef.current);
+      if (!range) {
+        setPendingSelection(null);
+        return;
+      }
+      const text = (resolve ? resolve(range) : range.toString()).trim();
       setPendingSelection(text.length > 0 ? text : null);
     };
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [containerRef]);
+  }, [containerRef, resolve]);
 
   const clear = useCallback(() => setPendingSelection(null), []);
 

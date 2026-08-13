@@ -39,6 +39,24 @@ from app.services.workspace.workspace import Workspace
 _settings = get_settings()
 
 
+async def _ok(coro):
+    """Await a tool's workspace coroutine, returning its result.
+
+    On error, return a descriptive string instead of letting the exception
+    propagate. PydanticAI lets tool exceptions escape ``run_stream_events``,
+    so without this a single validation/guard rejection — most importantly the
+    deletion-ratio guard refusing a near-full-document wipe — would abort the
+    whole agent turn with a fatal error. Surfacing it as the tool result lets
+    the model read the reason and self-correct (narrow the range, split the
+    edit, pick another tool, …). The Workspace layer still raises ValueError
+    for its own callers/tests; this wrapper only changes what the agent sees.
+    """
+    try:
+        return await coro
+    except Exception as e:  # noqa: BLE001 — a tool error must not crash the run
+        return f"[tool error] {type(e).__name__}: {e}"
+
+
 class AgentService:
     """Assembles and runs a document-editing agent over a Workspace."""
 
@@ -83,7 +101,9 @@ class AgentService:
         @agent.tool
         async def get_document_outline(ctx: RunContext[Workspace]) -> str:
             """Return the document outline: list of headings with line ranges."""
-            outline = await ctx.deps.get_document_outline()
+            outline = await _ok(ctx.deps.get_document_outline())
+            if isinstance(outline, str):  # error string from _ok
+                return outline
             return "\n".join(
                 f"{'#' * s['level']} {s['heading']} (lines {s['line_start']}-{s['line_end']})"
                 for s in outline
@@ -92,30 +112,43 @@ class AgentService:
         @agent.tool
         async def get_section(ctx: RunContext[Workspace], heading: str) -> str:
             """Read the full content of a section identified by its heading."""
-            return await ctx.deps.get_section(heading=heading)
+            return await _ok(ctx.deps.get_section(heading=heading))
 
         @agent.tool
         async def insert_text(
             ctx: RunContext[Workspace], text: str, after_heading: str | None = None
         ) -> str:
             """Insert text after a heading (or at end if after_heading is None)."""
-            return await ctx.deps.insert_text(text=text, after_heading=after_heading)
+            return await _ok(ctx.deps.insert_text(text=text, after_heading=after_heading))
 
         @agent.tool
         async def replace_section(ctx: RunContext[Workspace], heading: str, text: str) -> str:
             """Replace an entire section (identified by heading) with new text."""
-            return await ctx.deps.replace_section(heading=heading, text=text)
+            return await _ok(ctx.deps.replace_section(heading=heading, text=text))
+
+        @agent.tool
+        async def replace_document(ctx: RunContext[Workspace], text: str) -> str:
+            """Replace the ENTIRE document body with the given Markdown ``text``.
+
+            Use this when the user asks you to CREATE, GENERATE, or WRITE a
+            brand-new document/article from scratch, or to fully rewrite the
+            document. Pass the COMPLETE article in a single call. Do not append
+            to placeholder content or split the content across many small edits.
+            """
+            return await _ok(ctx.deps.replace_document(text=text))
 
         @agent.tool
         async def find_replace(ctx: RunContext[Workspace], pattern: str, replacement: str) -> str:
             """Replace all occurrences of pattern with replacement throughout the document."""
-            n = await ctx.deps.find_replace(pattern=pattern, replacement=replacement)
-            return f"replaced {n} occurrence(s)"
+            result = await _ok(ctx.deps.find_replace(pattern=pattern, replacement=replacement))
+            if isinstance(result, str):  # error string from _ok
+                return result
+            return f"replaced {result} occurrence(s)"
 
         @agent.tool
         async def set_title(ctx: RunContext[Workspace], title: str) -> str:
             """Set the document title."""
-            return await ctx.deps.set_title(title=title)
+            return await _ok(ctx.deps.set_title(title=title))
 
     async def _invoke_agent_run(
         self, agent: Agent[Workspace, str], message: str, message_history: list | None

@@ -149,6 +149,20 @@ class Workspace:
             self._commit(new_content)
             return f"replaced section {heading!r} (version {self.version})"
 
+    async def replace_document(self, text: str) -> str:
+        """Replace the ENTIRE document body with ``text``.
+
+        This is the natural operation for "create/generate a brand-new article",
+        which legitimately shrinks a long placeholder template down to the new
+        content. The deletion-ratio guard therefore does NOT apply here — it
+        guards accidental mass-deletions in the section/range tools, not an
+        explicit full-document overwrite.
+        """
+        async with self._lock:
+            new_content, _, _ = tools.replace_document(self.content, text)
+            self._commit(new_content)
+            return f"replaced whole document ({len(new_content)} chars, version {self.version})"
+
     async def delete_range(self, start: int, end: int) -> str:
         async with self._lock:
             old = self.content
